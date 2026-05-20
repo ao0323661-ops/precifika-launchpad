@@ -9,23 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WebhooksRouteImport } from './routes/webhooks'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardWebhooksRouteImport } from './routes/dashboard/webhooks'
 import { Route as DashboardSubscriptionsRouteImport } from './routes/dashboard/subscriptions'
-import { Route as DashboardProductsRouteImport } from './routes/dashboard/products'
-import { Route as DashboardPricingRouteImport } from './routes/dashboard/pricing'
-import { Route as DashboardPaymentsRouteImport } from './routes/dashboard/payments'
-import { Route as DashboardCustomersRouteImport } from './routes/dashboard/customers'
 
-const WebhooksRoute = WebhooksRouteImport.update({
-  id: '/webhooks',
-  path: '/webhooks',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -56,37 +46,12 @@ const DashboardSubscriptionsRoute = DashboardSubscriptionsRouteImport.update({
   path: '/subscriptions',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardProductsRoute = DashboardProductsRouteImport.update({
-  id: '/products',
-  path: '/products',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardPricingRoute = DashboardPricingRouteImport.update({
-  id: '/pricing',
-  path: '/pricing',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardPaymentsRoute = DashboardPaymentsRouteImport.update({
-  id: '/payments',
-  path: '/payments',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardCustomersRoute = DashboardCustomersRouteImport.update({
-  id: '/customers',
-  path: '/customers',
-  getParentRoute: () => DashboardRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/webhooks': typeof WebhooksRoute
-  '/dashboard/customers': typeof DashboardCustomersRoute
-  '/dashboard/payments': typeof DashboardPaymentsRoute
-  '/dashboard/pricing': typeof DashboardPricingRoute
-  '/dashboard/products': typeof DashboardProductsRoute
   '/dashboard/subscriptions': typeof DashboardSubscriptionsRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
 }
@@ -95,11 +60,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/webhooks': typeof WebhooksRoute
-  '/dashboard/customers': typeof DashboardCustomersRoute
-  '/dashboard/payments': typeof DashboardPaymentsRoute
-  '/dashboard/pricing': typeof DashboardPricingRoute
-  '/dashboard/products': typeof DashboardProductsRoute
   '/dashboard/subscriptions': typeof DashboardSubscriptionsRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
 }
@@ -109,11 +69,6 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/webhooks': typeof WebhooksRoute
-  '/dashboard/customers': typeof DashboardCustomersRoute
-  '/dashboard/payments': typeof DashboardPaymentsRoute
-  '/dashboard/pricing': typeof DashboardPricingRoute
-  '/dashboard/products': typeof DashboardProductsRoute
   '/dashboard/subscriptions': typeof DashboardSubscriptionsRoute
   '/dashboard/webhooks': typeof DashboardWebhooksRoute
 }
@@ -124,11 +79,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/signup'
-    | '/webhooks'
-    | '/dashboard/customers'
-    | '/dashboard/payments'
-    | '/dashboard/pricing'
-    | '/dashboard/products'
     | '/dashboard/subscriptions'
     | '/dashboard/webhooks'
   fileRoutesByTo: FileRoutesByTo
@@ -137,11 +87,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/signup'
-    | '/webhooks'
-    | '/dashboard/customers'
-    | '/dashboard/payments'
-    | '/dashboard/pricing'
-    | '/dashboard/products'
     | '/dashboard/subscriptions'
     | '/dashboard/webhooks'
   id:
@@ -150,11 +95,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/signup'
-    | '/webhooks'
-    | '/dashboard/customers'
-    | '/dashboard/payments'
-    | '/dashboard/pricing'
-    | '/dashboard/products'
     | '/dashboard/subscriptions'
     | '/dashboard/webhooks'
   fileRoutesById: FileRoutesById
@@ -164,18 +104,10 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRouteWithChildren
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
-  WebhooksRoute: typeof WebhooksRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/webhooks': {
-      id: '/webhooks'
-      path: '/webhooks'
-      fullPath: '/webhooks'
-      preLoaderRoute: typeof WebhooksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -218,51 +150,15 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSubscriptionsRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/products': {
-      id: '/dashboard/products'
-      path: '/products'
-      fullPath: '/dashboard/products'
-      preLoaderRoute: typeof DashboardProductsRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/pricing': {
-      id: '/dashboard/pricing'
-      path: '/pricing'
-      fullPath: '/dashboard/pricing'
-      preLoaderRoute: typeof DashboardPricingRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/payments': {
-      id: '/dashboard/payments'
-      path: '/payments'
-      fullPath: '/dashboard/payments'
-      preLoaderRoute: typeof DashboardPaymentsRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/customers': {
-      id: '/dashboard/customers'
-      path: '/customers'
-      fullPath: '/dashboard/customers'
-      preLoaderRoute: typeof DashboardCustomersRouteImport
-      parentRoute: typeof DashboardRoute
-    }
   }
 }
 
 interface DashboardRouteChildren {
-  DashboardCustomersRoute: typeof DashboardCustomersRoute
-  DashboardPaymentsRoute: typeof DashboardPaymentsRoute
-  DashboardPricingRoute: typeof DashboardPricingRoute
-  DashboardProductsRoute: typeof DashboardProductsRoute
   DashboardSubscriptionsRoute: typeof DashboardSubscriptionsRoute
   DashboardWebhooksRoute: typeof DashboardWebhooksRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
-  DashboardCustomersRoute: DashboardCustomersRoute,
-  DashboardPaymentsRoute: DashboardPaymentsRoute,
-  DashboardPricingRoute: DashboardPricingRoute,
-  DashboardProductsRoute: DashboardProductsRoute,
   DashboardSubscriptionsRoute: DashboardSubscriptionsRoute,
   DashboardWebhooksRoute: DashboardWebhooksRoute,
 }
@@ -276,7 +172,6 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRouteWithChildren,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
-  WebhooksRoute: WebhooksRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
