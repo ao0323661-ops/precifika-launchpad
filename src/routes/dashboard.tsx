@@ -199,6 +199,12 @@ function Dashboard() {
             <button className="text-sm font-medium text-primary hover:underline">Ver todas</button>
           </div>
           <div className="space-y-4">
+            {subscription?.status === 'trial' && (
+              <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-4 py-2 border border-blue-100 text-blue-700 text-xs font-medium">
+                <Sparkles className="h-4 w-4" />
+                Seu período de Trial expira em {new Date(subscription.expires_at).toLocaleDateString()}
+              </div>
+            )}
             {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">
                 <div className="flex items-center gap-4">
