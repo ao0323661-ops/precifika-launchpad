@@ -1,16 +1,15 @@
-import { QueryClient } from "@tanstack/react-query";
-import { createRouter } from "@tanstack/react-router";
-import { routeTree } from "./routeTree.gen";
+import { createFileRoute } from "@tanstack/react-router";
+import { DashboardLayout } from "@/components/dashboard-layout";
 
-export const getRouter = () => {
-  const queryClient = new QueryClient();
+export const Route = createFileRoute("/dashboard/products")({
+  component: Products,
+});
 
-  const router = createRouter({
-    routeTree,
-    context: { queryClient },
-    scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
-  });
-
-  return router;
-};
+function Products() {
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold">Produtos</h2>
+      <p className="text-muted-foreground text-sm">Gerencie seus produtos e precificação.</p>
+    </div>
+  );
+}

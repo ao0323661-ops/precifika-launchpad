@@ -1,6 +1,5 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { createFileRoute } from "@tanstack/react-router";
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+export const Route = createFileRoute("/dashboard/payments")({
+  component: () => <div>Pagamentos</div>,
+});
