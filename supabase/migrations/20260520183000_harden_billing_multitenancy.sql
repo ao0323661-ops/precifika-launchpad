@@ -1,1 +1,1 @@
--- Migration cleared (Server entry removed, content moved to src/entry-server.tsx)
+SELECT 1;

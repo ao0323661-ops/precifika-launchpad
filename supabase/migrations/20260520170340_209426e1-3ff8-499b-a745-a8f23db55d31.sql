@@ -1,1 +1,1 @@
--- Migration cleared (React component removed)
+SELECT 1;
