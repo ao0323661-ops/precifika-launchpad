@@ -74,9 +74,11 @@ function Header({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => voi
           ))}
         </nav>
         <div className="hidden items-center gap-2 md:flex">
-          <Button variant="ghost" size="sm">Entrar</Button>
-          <Button size="sm" className="bg-gradient-to-r from-primary to-primary-glow shadow-md shadow-primary/25 hover:opacity-90">
-            Cadastrar
+          <Button variant="ghost" size="sm" asChild>
+            <a href="/login">Entrar</a>
+          </Button>
+          <Button size="sm" className="bg-gradient-to-r from-primary to-primary-glow shadow-md shadow-primary/25 hover:opacity-90" asChild>
+            <a href="/signup">Cadastrar</a>
           </Button>
         </div>
         <button
@@ -101,9 +103,11 @@ function Header({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => voi
               </a>
             ))}
             <div className="flex flex-col gap-2 pt-2">
-              <Button variant="outline" size="sm">Entrar</Button>
-              <Button size="sm" className="bg-gradient-to-r from-primary to-primary-glow">
-                Cadastrar
+              <Button variant="outline" size="sm" asChild>
+                <a href="/login">Entrar</a>
+              </Button>
+              <Button size="sm" className="bg-gradient-to-r from-primary to-primary-glow" asChild>
+                <a href="/signup">Cadastrar</a>
               </Button>
             </div>
           </div>
@@ -141,8 +145,9 @@ function Hero() {
             <Button
               size="lg"
               className="w-full bg-gradient-to-r from-primary to-primary-glow shadow-lg shadow-primary/30 hover:opacity-90 sm:w-auto"
+              asChild
             >
-              Começar grátis
+              <a href="/signup">Começar grátis</a>
             </Button>
             <Button size="lg" variant="outline" className="w-full sm:w-auto">
               Ver demonstração
