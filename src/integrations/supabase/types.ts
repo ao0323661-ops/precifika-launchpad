@@ -167,6 +167,45 @@ export type Database = {
         }
         Relationships: []
       }
+      saas_subscriptions: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          external_subscription_id: string | null
+          gateway_provider: string | null
+          id: string
+          plan_name: string
+          started_at: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          external_subscription_id?: string | null
+          gateway_provider?: string | null
+          id?: string
+          plan_name: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          external_subscription_id?: string | null
+          gateway_provider?: string | null
+          id?: string
+          plan_name?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           amount: number

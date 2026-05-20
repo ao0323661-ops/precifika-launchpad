@@ -8,6 +8,10 @@ import {
   Activity,
   ArrowUpRight,
   TrendingUp,
+  Lock,
+  AlertTriangle,
+  RefreshCw,
+  Sparkles
 } from "lucide-react";
 import { 
   BarChart, 
@@ -20,17 +24,29 @@ import {
   AreaChart,
   Area
 } from "recharts";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/dashboard")({
   beforeLoad: async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw { redirect: "/login" };
-    }
-    return { session };
+    if (!session) throw { redirect: "/login" };
+
+    // Check SaaS Subscription
+    const { data: subscription } = await supabase
+      .from("saas_subscriptions")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+
+    const isExpired = subscription?.expires_at && new Date(subscription.expires_at) < new Date();
+    const isActive = subscription?.status === 'active' || (subscription?.status === 'trial' && !isExpired);
+
+    return { session, subscription, isActive, isExpired };
   },
   component: Dashboard,
 });
+
 
 const data = [
   { name: "Jan", revenue: 4000, subscriptions: 240 },
@@ -43,12 +59,46 @@ const data = [
 ];
 
 function Dashboard() {
+  const { isActive, isExpired, subscription } = Route.useRouteContext();
+  const navigate = Route.useNavigate();
+
+  if (!isActive) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 max-w-lg mx-auto">
+          <div className="h-20 w-20 rounded-full bg-amber-50 flex items-center justify-center">
+            {isExpired ? <RefreshCw className="h-10 w-10 text-amber-600 animate-spin-slow" /> : <Lock className="h-10 w-10 text-amber-600" />}
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-3xl font-extrabold text-slate-900">
+              {isExpired ? 'Assinatura Expirada' : 'Acesso Limitado'}
+            </h2>
+            <p className="text-slate-500">
+              {isExpired 
+                ? 'Sua assinatura do Precifika expirou. Renove agora para continuar gerenciando seus clientes e pagamentos.'
+                : 'Você ainda não possui uma assinatura ativa. Escolha um plano para liberar todas as funcionalidades do dashboard.'}
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 w-full">
+            <Button onClick={() => navigate({ to: '/dashboard/pricing' })} size="lg" className="w-full text-lg font-bold py-6">
+              Ver Planos e Preços
+            </Button>
+            <Button variant="ghost" onClick={() => window.location.href = '/'}>
+              Voltar para a Home
+            </Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   const stats = [
     { label: "Receita Mensal", value: "R$ 42.500", icon: CreditCard, change: "+12.5%", color: "text-emerald-600", bg: "bg-emerald-50" },
     { label: "Assinaturas Ativas", value: "1,284", icon: Activity, change: "+5.4%", color: "text-blue-600", bg: "bg-blue-50" },
     { label: "Cancelamentos", value: "12", icon: Users, change: "-2%", color: "text-rose-600", bg: "bg-rose-50" },
     { label: "Pagamentos Pendentes", value: "8", icon: BarChart3, change: "Estável", color: "text-amber-600", bg: "bg-amber-50" },
   ];
+
 
   return (
     <DashboardLayout>
@@ -150,6 +200,12 @@ function Dashboard() {
             <button className="text-sm font-medium text-primary hover:underline">Ver todas</button>
           </div>
           <div className="space-y-4">
+            {subscription?.status === 'trial' && (
+              <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-4 py-2 border border-blue-100 text-blue-700 text-xs font-medium">
+                <Sparkles className="h-4 w-4" />
+                Seu período de Trial expira em {new Date(subscription.expires_at).toLocaleDateString()}
+              </div>
+            )}
             {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">
                 <div className="flex items-center gap-4">

@@ -69,8 +69,6 @@ serve(async (req) => {
   // 2. Security Validation
   const isValid = await verifySignature(rawBody, signature);
   
-  // If signature fails, we could call the API to verify (as requested)
-  // But usually, signature is enough. The prompt says "Se não existir... validar pelo payload, id do evento e consulta segura na API."
   if (!isValid && signature) {
      await supabase.from("webhook_logs").update({ status: "error", error_message: "Invalid Signature" }).eq("id", logEntry?.id);
      return new Response(JSON.stringify({ error: "Invalid Signature" }), { status: 401 });
@@ -94,11 +92,8 @@ serve(async (req) => {
     const event = payload.event;
     const data = payload.data;
     
-    // Attempt to identify user_id from metadata or externalId
-    // Abacate Pay structure: data.checkout.metadata.userId or data.subscription.metadata.userId
     let userId = data?.checkout?.metadata?.userId || data?.subscription?.metadata?.userId || data?.checkout?.externalId || data?.subscription?.externalId;
     
-    // If not found, try by customer email
     if (!userId && data?.customer?.email) {
       const { data: customer } = await supabase
         .from("customers")
@@ -110,9 +105,8 @@ serve(async (req) => {
     }
 
     if (!userId) {
-       // We log it but can't process fully without a user context in this multi-tenant app
        await supabase.from("webhook_logs").update({ status: "error", error_message: "User context not found" }).eq("id", logEntry?.id);
-       return new Response(JSON.stringify({ error: "User not found" }), { status: 200 }); // Return 200 to acknowledge receipt
+       return new Response(JSON.stringify({ error: "User not found" }), { status: 200 });
     }
 
     // Update log with user_id
@@ -122,8 +116,22 @@ serve(async (req) => {
     if (event === "checkout.completed") {
       const checkout = data.checkout;
       const customerData = data.customer;
+      const planId = checkout.metadata?.planId;
 
-      // Create/Update Customer
+      if (planId) {
+        const expiresAt = new Date();
+        expiresAt.setMonth(expiresAt.getMonth() + 1);
+        await supabase.from("saas_subscriptions").upsert({
+          user_id: userId,
+          plan_name: planId,
+          status: "active",
+          external_subscription_id: checkout.id,
+          gateway_provider: "abacatepay",
+          expires_at: expiresAt.toISOString(),
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+      }
+
       const { data: customer, error: custErr } = await supabase.from("customers").upsert({
         user_id: userId,
         email: customerData.email,
@@ -135,11 +143,10 @@ serve(async (req) => {
 
       if (custErr) throw custErr;
 
-      // Create Payment
       const { error: payErr } = await supabase.from("payments").insert({
         user_id: userId,
         customer_id: customer.id,
-        amount: checkout.amount / 100, // Abacate uses cents
+        amount: checkout.amount / 100,
         status: "paid",
         payment_method: checkout.methods?.[0] || "PIX",
         external_payment_id: checkout.id,
@@ -152,8 +159,24 @@ serve(async (req) => {
     if (event.startsWith("subscription.")) {
       const sub = data.subscription;
       const customerData = data.customer;
+      const planId = sub.metadata?.planId;
 
-      // Find or create customer
+      const subStatus = sub.status === "ACTIVE" ? "active" : 
+                        sub.status === "CANCELED" ? "canceled" : 
+                        sub.status === "OVERDUE" ? "pending" : "inactive";
+
+      if (planId) {
+         await supabase.from("saas_subscriptions").upsert({
+          user_id: userId,
+          plan_name: planId,
+          status: subStatus,
+          external_subscription_id: sub.id,
+          gateway_provider: "abacatepay",
+          expires_at: sub.nextBillingAt || sub.expiresAt,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+      }
+
       const { data: customer } = await supabase.from("customers").upsert({
         user_id: userId,
         email: customerData.email,
@@ -163,24 +186,20 @@ serve(async (req) => {
         status: "active"
       }, { onConflict: 'user_id,email' }).select().single();
 
-      const subStatus = sub.status === "ACTIVE" ? "active" : 
-                        sub.status === "CANCELED" ? "canceled" : 
-                        sub.status === "OVERDUE" ? "pending" : "inactive";
-
-      // Upsert Subscription
-      const { error: subErr } = await supabase.from("subscriptions").upsert({
-        user_id: userId,
-        customer_id: customer.id,
-        external_subscription_id: sub.id,
-        plan_name: sub.product?.name || "Assinatura AbacatePay",
-        amount: sub.amount / 100,
-        status: subStatus,
-        gateway_provider: "abacatepay",
-        current_period_end: sub.nextBillingAt || sub.expiresAt,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'external_subscription_id' });
-
-      if (subErr) throw subErr;
+      if (customer) {
+        const { error: subErr } = await supabase.from("subscriptions").upsert({
+          user_id: userId,
+          customer_id: customer.id,
+          external_subscription_id: sub.id,
+          plan_name: sub.product?.name || "Assinatura AbacatePay",
+          amount: sub.amount / 100,
+          status: subStatus,
+          gateway_provider: "abacatepay",
+          current_period_end: sub.nextBillingAt || sub.expiresAt,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'external_subscription_id' });
+        if (subErr) throw subErr;
+      }
     }
 
     await supabase.from("webhook_logs").update({ 
