@@ -1,83 +1,63 @@
-import { DashboardLayout } from "@/components/dashboard-layout";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Outlet, createFileRoute, redirect, useLocation, useNavigate } from "@tanstack/react-router";
-import { Lock, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
-  beforeLoad: async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) {
-      throw redirect({ to: "/login" });
-    }
-
-    const { data: subscription } = await supabase
-      .from("saas_subscriptions")
-      .select("*")
-      .eq("user_id", session.user.id)
-      .maybeSingle();
-
-    const isExpired = Boolean(
-      subscription?.expires_at && new Date(subscription.expires_at) < new Date(),
-    );
-    const isActive =
-      subscription?.status === "active" || (subscription?.status === "trial" && !isExpired);
-
-    return { session, subscription, isActive, isExpired };
-  },
-  component: DashboardShell,
+  component: Login,
 });
 
-function DashboardShell() {
-  const { isActive, isExpired } = Route.useRouteContext();
-  const navigate = Route.useNavigate();
-  const location = useLocation();
-  const isPricingRoute = location.pathname === "/dashboard/pricing";
+function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  if (!isActive && !isPricingRoute) {
-    return (
-      <DashboardLayout>
-        <div className="mx-auto flex min-h-[60vh] max-w-lg flex-col items-center justify-center space-y-6 text-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-amber-50">
-            {isExpired ? (
-              <RefreshCw className="h-10 w-10 text-amber-600" />
-            ) : (
-              <Lock className="h-10 w-10 text-amber-600" />
-            )}
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-3xl font-extrabold text-slate-900">
-              {isExpired ? "Assinatura Expirada" : "Acesso Limitado"}
-            </h2>
-            <p className="text-slate-500">
-              {isExpired
-                ? "Sua assinatura do Precifika expirou. Renove agora para continuar gerenciando seus clientes e pagamentos."
-                : "Voce ainda nao possui uma assinatura ativa. Escolha um plano para liberar todas as funcionalidades do dashboard."}
-            </p>
-          </div>
-          <div className="flex w-full flex-col gap-3">
-            <Button
-              onClick={() => navigate({ to: "/dashboard/pricing" })}
-              size="lg"
-              className="w-full py-6 text-lg font-bold"
-            >
-              Ver Planos e Precos
-            </Button>
-            <Button variant="ghost" onClick={() => window.location.href = "/"}>
-              Voltar para a Home
-            </Button>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        toast.error(error.message || "Erro ao entrar.");
+      } else {
+        toast.success("Bem-vindo!");
+        navigate({ to: "/dashboard" });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <DashboardLayout>
-      <Outlet />
-    </DashboardLayout>
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-md space-y-8 rounded-2xl border border-border bg-card p-8 shadow-xl">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold tracking-tight">Entrar no Precifika</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Acesse o seu painel</p>
+        </div>
+        <form onSubmit={handleLogin} className="mt-8 space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="email">E-mail</Label>
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Senha</Label>
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+          </div>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Entrando..." : "Entrar"}
+          </Button>
+        </form>
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Não tem conta?{" "}
+          <a href="/signup" className="font-medium text-primary hover:underline">Cadastre-se</a>
+        </p>
+      </div>
+    </div>
   );
 }
