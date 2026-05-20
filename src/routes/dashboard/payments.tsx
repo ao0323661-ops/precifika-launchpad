@@ -24,7 +24,9 @@ function PaymentsPage() {
 
   const fetchPayments = useCallback(async () => {
     setLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) {
       setLoading(false);
       return;
@@ -46,19 +48,27 @@ function PaymentsPage() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "paid": return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
-      case "failed": return <XCircle className="h-4 w-4 text-rose-500" />;
-      case "refunded": return <XCircle className="h-4 w-4 text-slate-400" />;
-      default: return <Clock className="h-4 w-4 text-amber-500" />;
+      case "paid":
+        return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
+      case "failed":
+        return <XCircle className="h-4 w-4 text-rose-500" />;
+      case "refunded":
+        return <XCircle className="h-4 w-4 text-slate-400" />;
+      default:
+        return <Clock className="h-4 w-4 text-amber-500" />;
     }
   };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case "paid": return "Pago";
-      case "failed": return "Falhou";
-      case "refunded": return "Reembolsado";
-      default: return "Pendente";
+      case "paid":
+        return "Pago";
+      case "failed":
+        return "Falhou";
+      case "refunded":
+        return "Reembolsado";
+      default:
+        return "Pendente";
     }
   };
 
@@ -80,36 +90,64 @@ function PaymentsPage() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50">
-                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">Transação</th>
-                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">Cliente</th>
-                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">Valor</th>
-                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
-                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">Método</th>
-                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">Data</th>
+                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Transação
+                </th>
+                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Cliente
+                </th>
+                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Valor
+                </th>
+                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Status
+                </th>
+                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Método
+                </th>
+                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Data
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={6} className="px-6 py-10 text-center text-slate-500">Carregando...</td></tr>
+                <tr>
+                  <td colSpan={6} className="px-6 py-10 text-center text-slate-500">
+                    Carregando...
+                  </td>
+                </tr>
               ) : payments.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-10 text-center text-slate-500 text-sm italic">Nenhum pagamento registrado ainda.</td></tr>
+                <tr>
+                  <td colSpan={6} className="px-6 py-10 text-center text-slate-500 text-sm italic">
+                    Nenhum pagamento registrado ainda.
+                  </td>
+                </tr>
               ) : (
                 payments.map((p) => (
                   <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 text-xs font-mono text-slate-400">#{p.id.substring(0, 8).toUpperCase()}</td>
+                    <td className="px-6 py-4 text-xs font-mono text-slate-400">
+                      #{p.id.substring(0, 8).toUpperCase()}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-slate-900">{p.customers?.name}</div>
                       <div className="text-[10px] text-slate-400">{p.customers?.email}</div>
                     </td>
-                    <td className="px-6 py-4 text-sm font-bold text-slate-900">R$ {Number(p.amount).toFixed(2)}</td>
+                    <td className="px-6 py-4 text-sm font-bold text-slate-900">
+                      R$ {Number(p.amount).toFixed(2)}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 text-xs font-medium">
                         {getStatusIcon(p.status)}
                         {getStatusLabel(p.status)}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-xs text-slate-500 capitalize">{p.payment_method || "Cartão"}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500">{new Date(p.created_at).toLocaleString()}</td>
+                    <td className="px-6 py-4 text-xs text-slate-500 capitalize">
+                      {p.payment_method || "Cartão"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-500">
+                      {new Date(p.created_at).toLocaleString()}
+                    </td>
                   </tr>
                 ))
               )}

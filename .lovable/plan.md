@@ -18,6 +18,7 @@
    - Configurar flow de e-mail automático.
 
 ### Detalhes técnicos
+
 - Usar `TanStack Router` para o roteamento e `Supabase SDK` para o estado de sessão.
 - Proteger o `/dashboard` com `middleware`.
 - Garantir que o `logout` limpe as sessões.

@@ -19,7 +19,7 @@ function Signup() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
-    
+
     // Senha simples validation
     if (password.length < 6) {
       toast.error("A senha deve ter pelo menos 6 caracteres.");
@@ -28,12 +28,12 @@ function Signup() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({ 
-        email, 
+      const { error } = await supabase.auth.signUp({
+        email,
         password,
         options: {
           emailRedirectTo: "https://precifika-launchpad.lovable.app/dashboard",
-        }
+        },
       });
 
       if (error) {

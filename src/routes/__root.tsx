@@ -73,17 +73,37 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Lovable App" },
-      { name: "description", content: "Precifika Launchpad creates a modern, responsive SaaS landing page with hero, benefits, and pricing sections." },
+      {
+        name: "description",
+        content:
+          "Precifika Launchpad creates a modern, responsive SaaS landing page with hero, benefits, and pricing sections.",
+      },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Precifika Launchpad creates a modern, responsive SaaS landing page with hero, benefits, and pricing sections." },
+      {
+        property: "og:description",
+        content:
+          "Precifika Launchpad creates a modern, responsive SaaS landing page with hero, benefits, and pricing sections.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "Lovable App" },
-      { name: "twitter:description", content: "Precifika Launchpad creates a modern, responsive SaaS landing page with hero, benefits, and pricing sections." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ae4545a8-ab6e-4504-81cc-7cb93eabc823/id-preview-ddff4b7d--2d51a65b-3329-4158-97f5-f637b0a8c561.lovable.app-1779295309203.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ae4545a8-ab6e-4504-81cc-7cb93eabc823/id-preview-ddff4b7d--2d51a65b-3329-4158-97f5-f637b0a8c561.lovable.app-1779295309203.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Precifika Launchpad creates a modern, responsive SaaS landing page with hero, benefits, and pricing sections.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ae4545a8-ab6e-4504-81cc-7cb93eabc823/id-preview-ddff4b7d--2d51a65b-3329-4158-97f5-f637b0a8c561.lovable.app-1779295309203.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ae4545a8-ab6e-4504-81cc-7cb93eabc823/id-preview-ddff4b7d--2d51a65b-3329-4158-97f5-f637b0a8c561.lovable.app-1779295309203.png",
+      },
     ],
     links: [
       {
