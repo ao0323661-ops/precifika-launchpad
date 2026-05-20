@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { DEMO_USER } from "@/lib/demo-config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,23 @@ function Login() {
         toast.error(error.message || "Erro ao entrar.");
       } else {
         toast.success("Bem-vindo!");
+        navigate({ to: "/dashboard" });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    setEmail(DEMO_USER.email);
+    setPassword(DEMO_USER.password);
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword(DEMO_USER);
+      if (error) {
+        toast.error("Erro ao acessar modo demonstração.");
+      } else {
+        toast.success("Acessando Modo Demonstração");
         navigate({ to: "/dashboard" });
       }
     } finally {
@@ -65,6 +83,15 @@ function Login() {
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Entrando..." : "Entrar"}
+          </Button>
+          <Button 
+            type="button" 
+            variant="outline" 
+            className="w-full border-amber-200 text-amber-700 hover:bg-amber-50" 
+            onClick={handleDemoLogin}
+            disabled={loading}
+          >
+            Acessar Modo Demonstração
           </Button>
         </form>
         <p className="mt-6 text-center text-sm text-muted-foreground">
