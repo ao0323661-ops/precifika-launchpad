@@ -25,11 +25,12 @@ serve(async (req) => {
 
     const { planId, frequency } = await req.json();
 
-    const planData: Record<string, any> = {
+    const planData: Record<string, { name: string; amount: number }> = {
       starter: { name: "Plano Starter", amount: 4990 },
       pro: { name: "Plano Pro", amount: 9990 },
       premium: { name: "Plano Premium", amount: 19990 },
     };
+
 
     const selectedPlan = planData[planId];
     if (!selectedPlan) throw new Error("Invalid Plan");
