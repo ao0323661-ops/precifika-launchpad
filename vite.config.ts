@@ -7,6 +7,13 @@ export default defineConfig(async (env) => {
   
   return {
     ...baseConfig,
+    resolve: {
+      ...baseConfig.resolve,
+      alias: {
+        ...baseConfig.resolve?.alias,
+        "h3-v2": "h3",
+      },
+    },
     ssr: {
       ...baseConfig.ssr,
       noExternal: true,
