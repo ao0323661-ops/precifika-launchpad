@@ -1,104 +1,167 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Check } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Check, Sparkles, ArrowRight, ShieldCheck, Zap, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard/pricing")({
   component: PricingPage,
 });
 
+const PLANS = [
+  {
+    id: "starter",
+    name: "Starter",
+    price: 49.9,
+    description: "Ideal para quem está começando.",
+    icon: Zap,
+    color: "blue",
+    features: [
+      "Até 50 clientes",
+      "Até 100 assinaturas",
+      "Pagamentos PIX",
+      "Dashboard básico",
+      "Suporte via e-mail",
+    ],
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    price: 99.9,
+    description: "Para produtores em crescimento.",
+    icon: Sparkles,
+    color: "primary",
+    recommended: true,
+    features: [
+      "Clientes ilimitados",
+      "Assinaturas ilimitadas",
+      "Múltiplos gateways",
+      "Webhooks avançados",
+      "Relatórios detalhados",
+      "Suporte priorizado",
+    ],
+  },
+  {
+    id: "premium",
+    name: "Premium",
+    price: 199.9,
+    description: "O poder total para o seu SaaS.",
+    icon: Crown,
+    color: "amber",
+    features: [
+      "Tudo do plano Pro",
+      "White-label (em breve)",
+      "API de integração",
+      "Gerente de conta",
+      "Treinamento exclusivo",
+      "Early access a novas features",
+    ],
+  },
+];
+
 function PricingPage() {
-  const isDemo = true; // For now, we are in demo mode
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
-  const handleSubscribe = () => {
-    if (isDemo) {
-      toast.info(
-        "No modo demonstração, as assinaturas são simuladas. Você já possui acesso completo!",
-        {
-          duration: 5000,
-        },
-      );
-      return;
+  async function handleSubscribe(planId: string) {
+    setLoadingPlan(planId);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-subscription-checkout", {
+        body: { planId },
+      });
+
+      if (error) throw error;
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao iniciar checkout. Tente novamente.");
+    } finally {
+      setLoadingPlan(null);
     }
-    // Lógica real de checkout aqui
-  };
-
-  const plans = [
-    {
-      name: "Starter",
-      price: "R$ 49",
-      features: ["Até 50 produtos", "Cálculo de margem e custo", "1 usuário", "Suporte por email"],
-    },
-    {
-      name: "Pro",
-      price: "R$ 149",
-      features: [
-        "Produtos ilimitados",
-        "Dashboards avançados",
-        "Até 5 usuários",
-        "Simulações de cenário",
-      ],
-      highlight: true,
-    },
-    {
-      name: "Premium",
-      price: "R$ 399",
-      features: [
-        "Tudo do Pro",
-        "Usuários ilimitados",
-        "Integrações via API",
-        "Gerente de conta dedicado",
-      ],
-    },
-  ];
+  }
 
   return (
-    <div className="max-w-5xl mx-auto py-12 px-4">
-      <div className="text-center mb-16">
-        <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">Planos e Preços</h2>
-        <p className="mt-4 text-lg text-slate-600">
-          Escolha o plano ideal para o momento do seu negócio.
-        </p>
-      </div>
+    <div className="py-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-16">
+          <h2 className="text-base font-semibold text-primary tracking-wide uppercase">
+            Planos e Preços
+          </h2>
+          <p className="mt-2 text-4xl font-extrabold text-slate-900 sm:text-5xl">
+            Escolha o plano ideal para seu negócio
+          </p>
+          <p className="mt-4 max-w-2xl text-xl text-slate-500 mx-auto">
+            Comece agora com 7 dias de trial gratuito em qualquer plano.
+          </p>
+        </div>
 
-      <div className="grid gap-8 lg:grid-cols-3">
-        {plans.map((p) => (
-          <div
-            key={p.name}
-            className={`rounded-2xl p-8 border ${
-              p.highlight
-                ? "border-primary shadow-xl shadow-primary/10 relative"
-                : "border-slate-200 bg-white"
-            }`}
-          >
-            {p.highlight && (
-              <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase">
-                Mais Popular
-              </span>
-            )}
-            <h3 className="text-xl font-bold text-slate-900">{p.name}</h3>
-            <div className="mt-4 flex items-baseline gap-1">
-              <span className="text-4xl font-bold text-slate-900">{p.price}</span>
-              <span className="text-slate-500 text-sm">/mês</span>
-            </div>
-            <ul className="mt-8 space-y-4">
-              {p.features.map((f) => (
-                <li key={f} className="flex items-start gap-3 text-sm text-slate-600">
-                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <Button
-              onClick={handleSubscribe}
-              className={`mt-10 w-full py-6 text-lg font-bold ${
-                p.highlight ? "bg-primary" : "variant-outline"
+        <div className="grid gap-8 lg:grid-cols-3">
+          {PLANS.map((plan) => (
+            <div
+              key={plan.id}
+              className={`relative flex flex-col rounded-2xl bg-white p-8 shadow-lg transition-all hover:shadow-xl ${
+                plan.recommended ? "ring-2 ring-primary scale-105 z-10" : "border border-slate-200"
               }`}
             >
-              Assinar agora
-            </Button>
+              {plan.recommended && (
+                <div className="absolute top-0 right-8 -translate-y-1/2">
+                  <span className="inline-flex items-center rounded-full bg-primary px-4 py-1 text-sm font-semibold text-white shadow-sm">
+                    Recomendado
+                  </span>
+                </div>
+              )}
+
+              <div className="mb-8">
+                <div
+                  className={`h-12 w-12 rounded-xl bg-${plan.color === "primary" ? "primary" : plan.color + "-100"} flex items-center justify-center mb-4`}
+                >
+                  <plan.icon
+                    className={`h-6 w-6 text-${plan.color === "primary" ? "white" : plan.color + "-600"}`}
+                  />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900">{plan.name}</h3>
+                <p className="mt-2 text-slate-500 text-sm h-10">{plan.description}</p>
+                <div className="mt-6 flex items-baseline">
+                  <span className="text-4xl font-extrabold text-slate-900">
+                    R$ {plan.price.toFixed(2).replace(".", ",")}
+                  </span>
+                  <span className="ml-1 text-slate-500 text-lg font-medium">/mês</span>
+                </div>
+              </div>
+
+              <ul className="mb-8 space-y-4 flex-1">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-3">
+                    <div className="mt-1 flex-shrink-0 h-5 w-5 rounded-full bg-emerald-50 flex items-center justify-center">
+                      <Check className="h-3 w-3 text-emerald-600" />
+                    </div>
+                    <span className="text-slate-600 text-sm">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <Button
+                onClick={() => handleSubscribe(plan.id)}
+                disabled={loadingPlan !== null}
+                className={`w-full py-6 text-lg font-bold gap-2 ${
+                  plan.recommended ? "" : "bg-slate-900 hover:bg-slate-800"
+                }`}
+              >
+                {loadingPlan === plan.id ? "Iniciando..." : "Assinar agora"}
+                <ArrowRight className="h-5 w-5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-16 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm text-slate-600 shadow-sm border border-slate-100">
+            <ShieldCheck className="h-4 w-4 text-emerald-500" />
+            Pagamento seguro via Abacate Pay
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );
