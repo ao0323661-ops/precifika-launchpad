@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as DashboardWebhooksRouteImport } from './routes/dashboard/webhooks'
 import { Route as DashboardPricingRouteImport } from './routes/dashboard/pricing'
 import { Route as DashboardPaymentsRouteImport } from './routes/dashboard/payments'
 
@@ -42,6 +43,11 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardWebhooksRoute = DashboardWebhooksRouteImport.update({
+  id: '/webhooks',
+  path: '/webhooks',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardPricingRoute = DashboardPricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
@@ -60,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/dashboard/payments': typeof DashboardPaymentsRoute
   '/dashboard/pricing': typeof DashboardPricingRoute
+  '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
 export interface FileRoutesByTo {
@@ -68,6 +75,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/dashboard/payments': typeof DashboardPaymentsRoute
   '/dashboard/pricing': typeof DashboardPricingRoute
+  '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard': typeof DashboardIndexRoute
 }
 export interface FileRoutesById {
@@ -78,6 +86,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/dashboard/payments': typeof DashboardPaymentsRoute
   '/dashboard/pricing': typeof DashboardPricingRoute
+  '/dashboard/webhooks': typeof DashboardWebhooksRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
 export interface FileRouteTypes {
@@ -89,6 +98,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/dashboard/payments'
     | '/dashboard/pricing'
+    | '/dashboard/webhooks'
     | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/dashboard/payments'
     | '/dashboard/pricing'
+    | '/dashboard/webhooks'
     | '/dashboard'
   id:
     | '__root__'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/dashboard/payments'
     | '/dashboard/pricing'
+    | '/dashboard/webhooks'
     | '/dashboard/'
   fileRoutesById: FileRoutesById
 }
@@ -153,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/webhooks': {
+      id: '/dashboard/webhooks'
+      path: '/webhooks'
+      fullPath: '/dashboard/webhooks'
+      preLoaderRoute: typeof DashboardWebhooksRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/pricing': {
       id: '/dashboard/pricing'
       path: '/pricing'
@@ -173,12 +192,14 @@ declare module '@tanstack/react-router' {
 interface DashboardRouteChildren {
   DashboardPaymentsRoute: typeof DashboardPaymentsRoute
   DashboardPricingRoute: typeof DashboardPricingRoute
+  DashboardWebhooksRoute: typeof DashboardWebhooksRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardPaymentsRoute: DashboardPaymentsRoute,
   DashboardPricingRoute: DashboardPricingRoute,
+  DashboardWebhooksRoute: DashboardWebhooksRoute,
   DashboardIndexRoute: DashboardIndexRoute,
 }
 
@@ -195,3 +216,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
