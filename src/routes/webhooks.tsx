@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute("/404")({
+export const Route = createFileRoute("/webhooks")({
   component: NotFound,
 });
 

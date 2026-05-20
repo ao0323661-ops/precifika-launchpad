@@ -1,30 +1,105 @@
--- Create table for SaaS Subscriptions
-CREATE TABLE IF NOT EXISTS public.saas_subscriptions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) NOT NULL UNIQUE,
-    plan_name TEXT NOT NULL, -- starter, pro, premium, trial
-    status TEXT NOT NULL DEFAULT 'trial', -- active, trial, expired, canceled, pending
-    started_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    external_subscription_id TEXT,
-    gateway_provider TEXT DEFAULT 'abacatepay',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
--- Enable RLS
-ALTER TABLE public.saas_subscriptions ENABLE ROW LEVEL SECURITY;
+export const Route = createFileRoute("/signup")({
+  component: Signup,
+});
 
--- Policies
-CREATE POLICY "Users can view their own saas subscription"
-ON public.saas_subscriptions
-FOR SELECT
-USING (auth.uid() = user_id);
+function Signup() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
--- Note: We'll allow the edge function (service_role) to handle inserts/updates.
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading) return;
 
--- Index for performance
-CREATE INDEX IF NOT EXISTS idx_saas_subs_user ON public.saas_subscriptions(user_id);
+    // Senha simples validation
+    if (password.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
 
--- Add trial to existing users (optional but good for onboarding)
--- This query would be run by the system, but here we define the structure first.
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: "https://precifika-launchpad.lovable.app/dashboard",
+        },
+      });
+
+      if (error) {
+        if (error.status === 422 || error.message.includes("already registered")) {
+          toast.error("Este e-mail já está cadastrado. Tente fazer login.");
+        } else {
+          toast.error(error.message || "Erro ao criar conta. Tente novamente.");
+        }
+      } else {
+        toast.success("Conta criada! Verifique seu e-mail para confirmar.");
+        navigate({ to: "/login" });
+      }
+    } catch (err) {
+      toast.error("Ocorreu um erro inesperado.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-md space-y-8 rounded-2xl border border-border bg-card p-8 shadow-xl">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold tracking-tight">Criar sua conta</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Comece a controlar sua precificação hoje mesmo
+          </p>
+        </div>
+        <form onSubmit={handleSignup} className="mt-8 space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="exemplo@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="new-password"
+                minLength={6}
+              />
+            </div>
+          </div>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Criando conta..." : "Criar conta"}
+          </Button>
+        </form>
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Já tem uma conta?{" "}
+          <a href="/login" className="font-medium text-primary hover:underline">
+            Entrar
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+}

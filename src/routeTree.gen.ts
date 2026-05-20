@@ -9,10 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WebhooksRouteImport } from './routes/webhooks'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as R404RouteImport } from './routes/404'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardWebhooksRouteImport } from './routes/dashboard/webhooks'
 import { Route as DashboardSubscriptionsRouteImport } from './routes/dashboard/subscriptions'
@@ -21,6 +21,11 @@ import { Route as DashboardPricingRouteImport } from './routes/dashboard/pricing
 import { Route as DashboardPaymentsRouteImport } from './routes/dashboard/payments'
 import { Route as DashboardCustomersRouteImport } from './routes/dashboard/customers'
 
+const WebhooksRoute = WebhooksRouteImport.update({
+  id: '/webhooks',
+  path: '/webhooks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -34,11 +39,6 @@ const LoginRoute = LoginRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const R404Route = R404RouteImport.update({
-  id: '/404',
-  path: '/404',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -79,10 +79,10 @@ const DashboardCustomersRoute = DashboardCustomersRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/404': typeof R404Route
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/webhooks': typeof WebhooksRoute
   '/dashboard/customers': typeof DashboardCustomersRoute
   '/dashboard/payments': typeof DashboardPaymentsRoute
   '/dashboard/pricing': typeof DashboardPricingRoute
@@ -92,10 +92,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/404': typeof R404Route
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/webhooks': typeof WebhooksRoute
   '/dashboard/customers': typeof DashboardCustomersRoute
   '/dashboard/payments': typeof DashboardPaymentsRoute
   '/dashboard/pricing': typeof DashboardPricingRoute
@@ -106,10 +106,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/404': typeof R404Route
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/webhooks': typeof WebhooksRoute
   '/dashboard/customers': typeof DashboardCustomersRoute
   '/dashboard/payments': typeof DashboardPaymentsRoute
   '/dashboard/pricing': typeof DashboardPricingRoute
@@ -121,10 +121,10 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/404'
     | '/dashboard'
     | '/login'
     | '/signup'
+    | '/webhooks'
     | '/dashboard/customers'
     | '/dashboard/payments'
     | '/dashboard/pricing'
@@ -134,10 +134,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/404'
     | '/dashboard'
     | '/login'
     | '/signup'
+    | '/webhooks'
     | '/dashboard/customers'
     | '/dashboard/payments'
     | '/dashboard/pricing'
@@ -147,10 +147,10 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/404'
     | '/dashboard'
     | '/login'
     | '/signup'
+    | '/webhooks'
     | '/dashboard/customers'
     | '/dashboard/payments'
     | '/dashboard/pricing'
@@ -161,14 +161,21 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  R404Route: typeof R404Route
   DashboardRoute: typeof DashboardRouteWithChildren
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
+  WebhooksRoute: typeof WebhooksRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/webhooks': {
+      id: '/webhooks'
+      path: '/webhooks'
+      fullPath: '/webhooks'
+      preLoaderRoute: typeof WebhooksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -188,13 +195,6 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/404': {
-      id: '/404'
-      path: '/404'
-      fullPath: '/404'
-      preLoaderRoute: typeof R404RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -273,11 +273,21 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  R404Route: R404Route,
   DashboardRoute: DashboardRouteWithChildren,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
+  WebhooksRoute: WebhooksRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
