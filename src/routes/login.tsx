@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Chrome } from "lucide-react";
+import { LogIn } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
   component: Login,
@@ -90,7 +90,7 @@ function Login() {
           className="mt-4 w-full gap-2"
           onClick={handleGoogleLogin}
         >
-          <Chrome className="h-4 w-4" />
+          <LogIn className="h-4 w-4" />
           Google
         </Button>
 
