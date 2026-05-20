@@ -16,7 +16,7 @@ export default defineConfig(async (env) => {
     },
     ssr: {
       ...baseConfig.ssr,
-      noExternal: true,
+      noExternal: true, // This should bundle everything for SSR
     },
   } as any;
 });
