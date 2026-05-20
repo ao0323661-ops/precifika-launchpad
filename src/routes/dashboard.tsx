@@ -14,6 +14,10 @@ export const Route = createFileRoute("/dashboard")({
       throw redirect({ to: "/login" });
     }
 
+    if (session.user.email === "demo@precifika.com") {
+      return { session, subscription: null, isActive: true, isExpired: false, isDemo: true };
+    }
+
     const { data: subscription } = await supabase
       .from("saas_subscriptions")
       .select("*")
@@ -24,20 +28,20 @@ export const Route = createFileRoute("/dashboard")({
     const isActive =
       subscription?.status === "active" || (subscription?.status === "trial" && !isExpired);
 
-    return { session, subscription, isActive, isExpired };
+    return { session, subscription, isActive, isExpired, isDemo: false };
   },
   component: DashboardShell,
 });
 
 function DashboardShell() {
-  const { isActive, isExpired } = Route.useRouteContext();
+  const { isActive, isExpired, isDemo } = Route.useRouteContext();
 
   // Se estiver na rota de pricing, permite ver mesmo sem assinatura ativa
   // Mas no TanStack Start, podemos verificar o path via useLocation se necessário,
   // ou simplesmente definir que o layout lida com o estado global.
 
   return (
-    <DashboardLayout>
+    <DashboardLayout isDemo={isDemo}>
       {!isActive ? (
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 max-w-lg mx-auto">
           <div className="h-20 w-20 rounded-full bg-amber-50 flex items-center justify-center">

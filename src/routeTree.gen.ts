@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as DashboardPricingRouteImport } from './routes/dashboard/pricing'
 import { Route as DashboardPaymentsRouteImport } from './routes/dashboard/payments'
 
 const SignupRoute = SignupRouteImport.update({
@@ -41,6 +42,11 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardPricingRoute = DashboardPricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardPaymentsRoute = DashboardPaymentsRouteImport.update({
   id: '/payments',
   path: '/payments',
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/dashboard/payments': typeof DashboardPaymentsRoute
+  '/dashboard/pricing': typeof DashboardPricingRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
 export interface FileRoutesByTo {
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/dashboard/payments': typeof DashboardPaymentsRoute
+  '/dashboard/pricing': typeof DashboardPricingRoute
   '/dashboard': typeof DashboardIndexRoute
 }
 export interface FileRoutesById {
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/dashboard/payments': typeof DashboardPaymentsRoute
+  '/dashboard/pricing': typeof DashboardPricingRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
 export interface FileRouteTypes {
@@ -79,9 +88,16 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/dashboard/payments'
+    | '/dashboard/pricing'
     | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/signup' | '/dashboard/payments' | '/dashboard'
+  to:
+    | '/'
+    | '/login'
+    | '/signup'
+    | '/dashboard/payments'
+    | '/dashboard/pricing'
+    | '/dashboard'
   id:
     | '__root__'
     | '/'
@@ -89,6 +105,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/dashboard/payments'
+    | '/dashboard/pricing'
     | '/dashboard/'
   fileRoutesById: FileRoutesById
 }
@@ -136,6 +153,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/pricing': {
+      id: '/dashboard/pricing'
+      path: '/pricing'
+      fullPath: '/dashboard/pricing'
+      preLoaderRoute: typeof DashboardPricingRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/payments': {
       id: '/dashboard/payments'
       path: '/payments'
@@ -148,11 +172,13 @@ declare module '@tanstack/react-router' {
 
 interface DashboardRouteChildren {
   DashboardPaymentsRoute: typeof DashboardPaymentsRoute
+  DashboardPricingRoute: typeof DashboardPricingRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardPaymentsRoute: DashboardPaymentsRoute,
+  DashboardPricingRoute: DashboardPricingRoute,
   DashboardIndexRoute: DashboardIndexRoute,
 }
 
@@ -169,12 +195,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useCallback, useEffect, useState } from "react";
-import { Download, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Download, CheckCircle2, XCircle, Clock, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { MOCK_PAYMENTS } from "@/lib/demo-config";
 
 export const Route = createFileRoute("/dashboard/payments")({
   component: PaymentsPage,
@@ -31,6 +32,12 @@ function PaymentsPage() {
       setLoading(false);
       return;
     }
+    if (session.user.email === "demo@precifika.com") {
+      setPayments(MOCK_PAYMENTS as unknown as Payment[]);
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("payments")
       .select(`*, customers (name, email)`)
