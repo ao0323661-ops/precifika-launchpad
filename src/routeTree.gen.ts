@@ -14,6 +14,10 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as R404RouteImport } from './routes/404'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DashboardSubscriptionsRouteImport } from './routes/dashboard/subscriptions'
+import { Route as DashboardProductsRouteImport } from './routes/dashboard/products'
+import { Route as DashboardPaymentsRouteImport } from './routes/dashboard/payments'
+import { Route as DashboardCustomersRouteImport } from './routes/dashboard/customers'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -40,41 +44,101 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardSubscriptionsRoute = DashboardSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardProductsRoute = DashboardProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardPaymentsRoute = DashboardPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardCustomersRoute = DashboardCustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => DashboardRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/404': typeof R404Route
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/dashboard/customers': typeof DashboardCustomersRoute
+  '/dashboard/payments': typeof DashboardPaymentsRoute
+  '/dashboard/products': typeof DashboardProductsRoute
+  '/dashboard/subscriptions': typeof DashboardSubscriptionsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/404': typeof R404Route
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/dashboard/customers': typeof DashboardCustomersRoute
+  '/dashboard/payments': typeof DashboardPaymentsRoute
+  '/dashboard/products': typeof DashboardProductsRoute
+  '/dashboard/subscriptions': typeof DashboardSubscriptionsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/404': typeof R404Route
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/dashboard/customers': typeof DashboardCustomersRoute
+  '/dashboard/payments': typeof DashboardPaymentsRoute
+  '/dashboard/products': typeof DashboardProductsRoute
+  '/dashboard/subscriptions': typeof DashboardSubscriptionsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/404' | '/dashboard' | '/login' | '/signup'
+  fullPaths:
+    | '/'
+    | '/404'
+    | '/dashboard'
+    | '/login'
+    | '/signup'
+    | '/dashboard/customers'
+    | '/dashboard/payments'
+    | '/dashboard/products'
+    | '/dashboard/subscriptions'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/404' | '/dashboard' | '/login' | '/signup'
-  id: '__root__' | '/' | '/404' | '/dashboard' | '/login' | '/signup'
+  to:
+    | '/'
+    | '/404'
+    | '/dashboard'
+    | '/login'
+    | '/signup'
+    | '/dashboard/customers'
+    | '/dashboard/payments'
+    | '/dashboard/products'
+    | '/dashboard/subscriptions'
+  id:
+    | '__root__'
+    | '/'
+    | '/404'
+    | '/dashboard'
+    | '/login'
+    | '/signup'
+    | '/dashboard/customers'
+    | '/dashboard/payments'
+    | '/dashboard/products'
+    | '/dashboard/subscriptions'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   R404Route: typeof R404Route
-  DashboardRoute: typeof DashboardRoute
+  DashboardRoute: typeof DashboardRouteWithChildren
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
 }
@@ -116,13 +180,59 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/subscriptions': {
+      id: '/dashboard/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/dashboard/subscriptions'
+      preLoaderRoute: typeof DashboardSubscriptionsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/products': {
+      id: '/dashboard/products'
+      path: '/products'
+      fullPath: '/dashboard/products'
+      preLoaderRoute: typeof DashboardProductsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/payments': {
+      id: '/dashboard/payments'
+      path: '/payments'
+      fullPath: '/dashboard/payments'
+      preLoaderRoute: typeof DashboardPaymentsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/customers': {
+      id: '/dashboard/customers'
+      path: '/customers'
+      fullPath: '/dashboard/customers'
+      preLoaderRoute: typeof DashboardCustomersRouteImport
+      parentRoute: typeof DashboardRoute
+    }
   }
 }
+
+interface DashboardRouteChildren {
+  DashboardCustomersRoute: typeof DashboardCustomersRoute
+  DashboardPaymentsRoute: typeof DashboardPaymentsRoute
+  DashboardProductsRoute: typeof DashboardProductsRoute
+  DashboardSubscriptionsRoute: typeof DashboardSubscriptionsRoute
+}
+
+const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardCustomersRoute: DashboardCustomersRoute,
+  DashboardPaymentsRoute: DashboardPaymentsRoute,
+  DashboardProductsRoute: DashboardProductsRoute,
+  DashboardSubscriptionsRoute: DashboardSubscriptionsRoute,
+}
+
+const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
+  DashboardRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   R404Route: R404Route,
-  DashboardRoute: DashboardRoute,
+  DashboardRoute: DashboardRouteWithChildren,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
 }
