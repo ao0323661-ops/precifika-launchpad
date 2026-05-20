@@ -12,11 +12,7 @@ export const createRouter = () => {
   });
 };
 
-let router: any;
-export const getRouter = () => {
-  if (!router) router = createRouter();
-  return router;
-};
+export const getRouter = createRouter;
 
 declare module "@tanstack/react-router" {
   interface Register {
