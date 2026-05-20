@@ -1,14 +1,5 @@
-import { getServerEntry } from "@tanstack/react-start/server-entry";
+// @ts-ignore
+import { createHandler } from "@tanstack/react-start/server";
+import { startInstance } from "./start";
 
-export default {
-  async fetch(request: Request, env: unknown, ctx: unknown) {
-    try {
-      const handler = await getServerEntry();
-      const response = await (handler as any).fetch(request, env, ctx);
-      return response;
-    } catch (error) {
-      console.error(error);
-      return new Response("Internal Server Error", { status: 500 });
-    }
-  },
-};
+export default createHandler(startInstance);
