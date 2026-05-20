@@ -8,6 +8,9 @@ import {
   Activity,
   ArrowUpRight,
   TrendingUp,
+  Lock,
+  AlertTriangle,
+  RefreshCw
 } from "lucide-react";
 import { 
   BarChart, 
@@ -20,17 +23,29 @@ import {
   AreaChart,
   Area
 } from "recharts";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/dashboard")({
   beforeLoad: async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw { redirect: "/login" };
-    }
-    return { session };
+    if (!session) throw { redirect: "/login" };
+
+    // Check SaaS Subscription
+    const { data: subscription } = await supabase
+      .from("saas_subscriptions")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+
+    const isExpired = subscription?.expires_at && new Date(subscription.expires_at) < new Date();
+    const isActive = subscription?.status === 'active' || (subscription?.status === 'trial' && !isExpired);
+
+    return { session, subscription, isActive, isExpired };
   },
   component: Dashboard,
 });
+
 
 const data = [
   { name: "Jan", revenue: 4000, subscriptions: 240 },
