@@ -3,9 +3,4 @@
   "name": "tanstack-start-app",
   "compatibility_date": "2025-09-24",
   "compatibility_flags": ["nodejs_compat"],
-  "main": ".tanstack/server/server.js",
-  "assets": {
-    "directory": ".tanstack/client",
-    "binding": "ASSETS"
-  }
 }
