@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useLocation, redirect } from "@tanstack/react-router";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { supabase } from "@/integrations/supabase/client";
 import { Lock, RefreshCw } from "lucide-react";
@@ -10,8 +10,9 @@ export const Route = createFileRoute("/dashboard/")({
       data: { session },
     } = await supabase.auth.getSession();
     if (!session) {
-      throw { redirect: "/login" };
+      throw redirect({ to: "/login" });
     }
+
 
     const { data: subscription } = await supabase
       .from("saas_subscriptions")
