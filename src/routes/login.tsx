@@ -84,10 +84,10 @@ function Login() {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Entrando..." : "Entrar"}
           </Button>
-          <Button 
-            type="button" 
-            variant="outline" 
-            className="w-full border-amber-200 text-amber-700 hover:bg-amber-50" 
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full border-amber-200 text-amber-700 hover:bg-amber-50"
             onClick={handleDemoLogin}
             disabled={loading}
           >

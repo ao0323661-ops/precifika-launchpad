@@ -28,7 +28,6 @@ export const Route = createFileRoute("/dashboard")({
     const isActive =
       subscription?.status === "active" || (subscription?.status === "trial" && !isExpired);
 
-
     return { session, subscription, isActive, isExpired, isDemo: false };
   },
   component: DashboardShell,

@@ -12,9 +12,12 @@ function PricingPage() {
 
   const handleSubscribe = () => {
     if (isDemo) {
-      toast.info("No modo demonstração, as assinaturas são simuladas. Você já possui acesso completo!", {
-        duration: 5000,
-      });
+      toast.info(
+        "No modo demonstração, as assinaturas são simuladas. Você já possui acesso completo!",
+        {
+          duration: 5000,
+        },
+      );
       return;
     }
     // Lógica real de checkout aqui
@@ -29,13 +32,23 @@ function PricingPage() {
     {
       name: "Pro",
       price: "R$ 149",
-      features: ["Produtos ilimitados", "Dashboards avançados", "Até 5 usuários", "Simulações de cenário"],
+      features: [
+        "Produtos ilimitados",
+        "Dashboards avançados",
+        "Até 5 usuários",
+        "Simulações de cenário",
+      ],
       highlight: true,
     },
     {
       name: "Premium",
       price: "R$ 399",
-      features: ["Tudo do Pro", "Usuários ilimitados", "Integrações via API", "Gerente de conta dedicado"],
+      features: [
+        "Tudo do Pro",
+        "Usuários ilimitados",
+        "Integrações via API",
+        "Gerente de conta dedicado",
+      ],
     },
   ];
 
@@ -43,7 +56,9 @@ function PricingPage() {
     <div className="max-w-5xl mx-auto py-12 px-4">
       <div className="text-center mb-16">
         <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">Planos e Preços</h2>
-        <p className="mt-4 text-lg text-slate-600">Escolha o plano ideal para o momento do seu negócio.</p>
+        <p className="mt-4 text-lg text-slate-600">
+          Escolha o plano ideal para o momento do seu negócio.
+        </p>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-3">
@@ -51,8 +66,8 @@ function PricingPage() {
           <div
             key={p.name}
             className={`rounded-2xl p-8 border ${
-              p.highlight 
-                ? "border-primary shadow-xl shadow-primary/10 relative" 
+              p.highlight
+                ? "border-primary shadow-xl shadow-primary/10 relative"
                 : "border-slate-200 bg-white"
             }`}
           >
