@@ -58,12 +58,46 @@ const data = [
 ];
 
 function Dashboard() {
+  const { isActive, isExpired, subscription } = Route.useRouteContext();
+  const navigate = Route.useNavigate();
+
+  if (!isActive) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 max-w-lg mx-auto">
+          <div className="h-20 w-20 rounded-full bg-amber-50 flex items-center justify-center">
+            {isExpired ? <RefreshCw className="h-10 w-10 text-amber-600 animate-spin-slow" /> : <Lock className="h-10 w-10 text-amber-600" />}
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-3xl font-extrabold text-slate-900">
+              {isExpired ? 'Assinatura Expirada' : 'Acesso Limitado'}
+            </h2>
+            <p className="text-slate-500">
+              {isExpired 
+                ? 'Sua assinatura do Precifika expirou. Renove agora para continuar gerenciando seus clientes e pagamentos.'
+                : 'Você ainda não possui uma assinatura ativa. Escolha um plano para liberar todas as funcionalidades do dashboard.'}
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 w-full">
+            <Button onClick={() => navigate({ to: '/dashboard/pricing' })} size="lg" className="w-full text-lg font-bold py-6">
+              Ver Planos e Preços
+            </Button>
+            <Button variant="ghost" onClick={() => window.location.href = '/'}>
+              Voltar para a Home
+            </Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   const stats = [
     { label: "Receita Mensal", value: "R$ 42.500", icon: CreditCard, change: "+12.5%", color: "text-emerald-600", bg: "bg-emerald-50" },
     { label: "Assinaturas Ativas", value: "1,284", icon: Activity, change: "+5.4%", color: "text-blue-600", bg: "bg-blue-50" },
     { label: "Cancelamentos", value: "12", icon: Users, change: "-2%", color: "text-rose-600", bg: "bg-rose-50" },
     { label: "Pagamentos Pendentes", value: "8", icon: BarChart3, change: "Estável", color: "text-amber-600", bg: "bg-amber-50" },
   ];
+
 
   return (
     <DashboardLayout>
