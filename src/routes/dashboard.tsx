@@ -10,7 +10,8 @@ import {
   TrendingUp,
   Lock,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  Sparkles
 } from "lucide-react";
 import { 
   BarChart, 
