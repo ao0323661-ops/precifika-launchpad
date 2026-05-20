@@ -1,9 +1,9 @@
 // Server-side Supabase client with service role key - bypasses RLS.
 // Use this for admin operations in server functions and server routes only.
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
-function createSupabaseAdminClient() {
+function createSupabaseAdminClient(): SupabaseClient<Database> {
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -12,9 +12,11 @@ function createSupabaseAdminClient() {
       "[Supabase] Missing server-side environment variables. Admin client will not function.",
     );
     // Return a proxy that throws on any access
-    return new Proxy({} as any, {
+    return new Proxy({} as SupabaseClient<Database>, {
       get() {
-        throw new Error("Supabase Admin client accessed but environment variables are missing.");
+        throw new Error(
+          "Supabase Admin client accessed but environment variables are missing.",
+        );
       },
     });
   }
@@ -28,9 +30,9 @@ function createSupabaseAdminClient() {
   });
 }
 
-let _supabaseAdmin: any | undefined;
+let _supabaseAdmin: SupabaseClient<Database> | undefined;
 
-export const supabaseAdmin = new Proxy({} as any, {
+export const supabaseAdmin = new Proxy({} as SupabaseClient<Database>, {
   get(_, prop, receiver) {
     if (!_supabaseAdmin) _supabaseAdmin = createSupabaseAdminClient();
     return Reflect.get(_supabaseAdmin, prop, receiver);
