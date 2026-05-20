@@ -113,9 +113,16 @@ function SubscriptionsPage() {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                          sub.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                          sub.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 
+                          sub.status === 'pending' ? 'bg-amber-50 text-amber-600' :
+                          sub.status === 'canceled' ? 'bg-rose-50 text-rose-600' :
+                          sub.status === 'expired' ? 'bg-slate-100 text-slate-600' :
+                          'bg-slate-50 text-slate-500'
                         }`}>
-                          {sub.status === 'active' ? 'Ativo' : 'Pendente'}
+                          {sub.status === 'active' ? 'Ativo' : 
+                           sub.status === 'pending' ? 'Pendente' :
+                           sub.status === 'canceled' ? 'Cancelado' :
+                           sub.status === 'expired' ? 'Expirado' : sub.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-500">

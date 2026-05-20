@@ -18,6 +18,8 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          external_customer_id: string | null
+          gateway_provider: string | null
           id: string
           name: string
           phone: string | null
@@ -28,6 +30,8 @@ export type Database = {
         Insert: {
           created_at?: string
           email: string
+          external_customer_id?: string | null
+          gateway_provider?: string | null
           id?: string
           name: string
           phone?: string | null
@@ -38,6 +42,8 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string
+          external_customer_id?: string | null
+          gateway_provider?: string | null
           id?: string
           name?: string
           phone?: string | null
@@ -52,6 +58,8 @@ export type Database = {
           amount: number
           created_at: string
           customer_id: string
+          external_payment_id: string | null
+          gateway_provider: string | null
           id: string
           paid_at: string | null
           payment_method: string | null
@@ -63,6 +71,8 @@ export type Database = {
           amount: number
           created_at?: string
           customer_id: string
+          external_payment_id?: string | null
+          gateway_provider?: string | null
           id?: string
           paid_at?: string | null
           payment_method?: string | null
@@ -74,6 +84,8 @@ export type Database = {
           amount?: number
           created_at?: string
           customer_id?: string
+          external_payment_id?: string | null
+          gateway_provider?: string | null
           id?: string
           paid_at?: string | null
           payment_method?: string | null
@@ -163,6 +175,8 @@ export type Database = {
           current_period_end: string
           current_period_start: string
           customer_id: string
+          external_subscription_id: string | null
+          gateway_provider: string | null
           id: string
           plan_name: string
           status: string
@@ -176,6 +190,8 @@ export type Database = {
           current_period_end: string
           current_period_start?: string
           customer_id: string
+          external_subscription_id?: string | null
+          gateway_provider?: string | null
           id?: string
           plan_name: string
           status?: string
@@ -189,6 +205,8 @@ export type Database = {
           current_period_end?: string
           current_period_start?: string
           customer_id?: string
+          external_subscription_id?: string | null
+          gateway_provider?: string | null
           id?: string
           plan_name?: string
           status?: string
@@ -204,6 +222,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      webhook_logs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          event_id: string | null
+          event_type: string
+          gateway_provider: string
+          id: string
+          payload: Json
+          processed_at: string | null
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          event_id?: string | null
+          event_type: string
+          gateway_provider: string
+          id?: string
+          payload: Json
+          processed_at?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          event_id?: string | null
+          event_type?: string
+          gateway_provider?: string
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {

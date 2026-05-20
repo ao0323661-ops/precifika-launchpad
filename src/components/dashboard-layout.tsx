@@ -10,7 +10,8 @@ import {
   LogOut, 
   Sparkles,
   Menu,
-  X
+  X,
+  Activity
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -29,7 +30,7 @@ export function DashboardLayout({ children }: SidebarProps) {
     { label: "Assinaturas", icon: CreditCard, href: "/dashboard/subscriptions" },
     { label: "Pagamentos", icon: BarChart3, href: "/dashboard/payments" },
     { label: "Produtos", icon: Package, href: "/dashboard/products" },
-    { label: "Relatórios", icon: BarChart3, href: "#" },
+    { label: "Webhooks", icon: Activity, href: "/dashboard/webhooks" },
     { label: "Configurações", icon: Settings, href: "#" },
   ];
 

@@ -49,6 +49,7 @@ function PaymentsPage() {
     switch (status) {
       case 'paid': return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
       case 'failed': return <XCircle className="h-4 w-4 text-rose-500" />;
+      case 'refunded': return <XCircle className="h-4 w-4 text-slate-400" />;
       default: return <Clock className="h-4 w-4 text-amber-500" />;
     }
   };
