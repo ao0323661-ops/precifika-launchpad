@@ -31,7 +31,6 @@ serve(async (req) => {
       premium: { name: "Plano Premium", amount: 19990 },
     };
 
-
     const selectedPlan = planData[planId];
     if (!selectedPlan) throw new Error("Invalid Plan");
 
