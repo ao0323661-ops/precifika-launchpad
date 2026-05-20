@@ -18,21 +18,39 @@ function Signup() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    const { error } = await supabase.auth.signUp({ 
-      email, 
-      password,
-      options: {
-        emailRedirectTo: window.location.origin + "/dashboard",
-      }
-    });
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success("Conta criada! Verifique seu e-mail para confirmar.");
-      navigate({ to: "/login" });
+    if (loading) return;
+    
+    // Senha simples validation
+    if (password.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres.");
+      return;
     }
-    setLoading(false);
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          emailRedirectTo: "https://precifika-launchpad.lovable.app/dashboard",
+        }
+      });
+
+      if (error) {
+        if (error.status === 422 || error.message.includes("already registered")) {
+          toast.error("Este e-mail já está cadastrado. Tente fazer login.");
+        } else {
+          toast.error(error.message || "Erro ao criar conta. Tente novamente.");
+        }
+      } else {
+        toast.success("Conta criada! Verifique seu e-mail para confirmar.");
+        navigate({ to: "/login" });
+      }
+    } catch (err) {
+      toast.error("Ocorreu um erro inesperado.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -55,6 +73,7 @@ function Signup() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoComplete="email"
               />
             </div>
             <div className="space-y-2">
@@ -65,6 +84,8 @@ function Signup() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoComplete="new-password"
+                minLength={6}
               />
             </div>
           </div>
