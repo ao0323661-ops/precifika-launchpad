@@ -8,12 +8,14 @@ function createSupabaseAdminClient() {
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    console.warn("[Supabase] Missing server-side environment variables. Admin client will not function.");
+    console.warn(
+      "[Supabase] Missing server-side environment variables. Admin client will not function.",
+    );
     // Return a proxy that throws on any access
     return new Proxy({} as any, {
       get() {
         throw new Error("Supabase Admin client accessed but environment variables are missing.");
-      }
+      },
     });
   }
 
