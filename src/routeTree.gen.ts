@@ -11,15 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as R404RouteImport } from './routes/404'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as DashboardWebhooksRouteImport } from './routes/dashboard/webhooks'
-import { Route as DashboardSubscriptionsRouteImport } from './routes/dashboard/subscriptions'
-import { Route as DashboardProductsRouteImport } from './routes/dashboard/products'
-import { Route as DashboardPricingRouteImport } from './routes/dashboard/pricing'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as DashboardPaymentsRouteImport } from './routes/dashboard/payments'
-import { Route as DashboardCustomersRouteImport } from './routes/dashboard/customers'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -31,140 +25,64 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const R404Route = R404RouteImport.update({
-  id: '/404',
-  path: '/404',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardWebhooksRoute = DashboardWebhooksRouteImport.update({
-  id: '/webhooks',
-  path: '/webhooks',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardSubscriptionsRoute = DashboardSubscriptionsRouteImport.update({
-  id: '/subscriptions',
-  path: '/subscriptions',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardProductsRoute = DashboardProductsRouteImport.update({
-  id: '/products',
-  path: '/products',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardPricingRoute = DashboardPricingRouteImport.update({
-  id: '/pricing',
-  path: '/pricing',
-  getParentRoute: () => DashboardRoute,
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
+  id: '/dashboard/',
+  path: '/dashboard/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardPaymentsRoute = DashboardPaymentsRouteImport.update({
-  id: '/payments',
-  path: '/payments',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardCustomersRoute = DashboardCustomersRouteImport.update({
-  id: '/customers',
-  path: '/customers',
-  getParentRoute: () => DashboardRoute,
+  id: '/dashboard/payments',
+  path: '/dashboard/payments',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/404': typeof R404Route
-  '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/dashboard/customers': typeof DashboardCustomersRoute
   '/dashboard/payments': typeof DashboardPaymentsRoute
-  '/dashboard/pricing': typeof DashboardPricingRoute
-  '/dashboard/products': typeof DashboardProductsRoute
-  '/dashboard/subscriptions': typeof DashboardSubscriptionsRoute
-  '/dashboard/webhooks': typeof DashboardWebhooksRoute
+  '/dashboard/': typeof DashboardIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/404': typeof R404Route
-  '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/dashboard/customers': typeof DashboardCustomersRoute
   '/dashboard/payments': typeof DashboardPaymentsRoute
-  '/dashboard/pricing': typeof DashboardPricingRoute
-  '/dashboard/products': typeof DashboardProductsRoute
-  '/dashboard/subscriptions': typeof DashboardSubscriptionsRoute
-  '/dashboard/webhooks': typeof DashboardWebhooksRoute
+  '/dashboard': typeof DashboardIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/404': typeof R404Route
-  '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/dashboard/customers': typeof DashboardCustomersRoute
   '/dashboard/payments': typeof DashboardPaymentsRoute
-  '/dashboard/pricing': typeof DashboardPricingRoute
-  '/dashboard/products': typeof DashboardProductsRoute
-  '/dashboard/subscriptions': typeof DashboardSubscriptionsRoute
-  '/dashboard/webhooks': typeof DashboardWebhooksRoute
+  '/dashboard/': typeof DashboardIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/404'
-    | '/dashboard'
-    | '/login'
-    | '/signup'
-    | '/dashboard/customers'
-    | '/dashboard/payments'
-    | '/dashboard/pricing'
-    | '/dashboard/products'
-    | '/dashboard/subscriptions'
-    | '/dashboard/webhooks'
+  fullPaths: '/' | '/login' | '/signup' | '/dashboard/payments' | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/404'
-    | '/dashboard'
-    | '/login'
-    | '/signup'
-    | '/dashboard/customers'
-    | '/dashboard/payments'
-    | '/dashboard/pricing'
-    | '/dashboard/products'
-    | '/dashboard/subscriptions'
-    | '/dashboard/webhooks'
+  to: '/' | '/login' | '/signup' | '/dashboard/payments' | '/dashboard'
   id:
     | '__root__'
     | '/'
-    | '/404'
-    | '/dashboard'
     | '/login'
     | '/signup'
-    | '/dashboard/customers'
     | '/dashboard/payments'
-    | '/dashboard/pricing'
-    | '/dashboard/products'
-    | '/dashboard/subscriptions'
-    | '/dashboard/webhooks'
+    | '/dashboard/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  R404Route: typeof R404Route
-  DashboardRoute: typeof DashboardRouteWithChildren
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
+  DashboardPaymentsRoute: typeof DashboardPaymentsRoute
+  DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -183,20 +101,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/404': {
-      id: '/404'
-      path: '/404'
-      fullPath: '/404'
-      preLoaderRoute: typeof R404RouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -204,80 +108,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard/webhooks': {
-      id: '/dashboard/webhooks'
-      path: '/webhooks'
-      fullPath: '/dashboard/webhooks'
-      preLoaderRoute: typeof DashboardWebhooksRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/subscriptions': {
-      id: '/dashboard/subscriptions'
-      path: '/subscriptions'
-      fullPath: '/dashboard/subscriptions'
-      preLoaderRoute: typeof DashboardSubscriptionsRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/products': {
-      id: '/dashboard/products'
-      path: '/products'
-      fullPath: '/dashboard/products'
-      preLoaderRoute: typeof DashboardProductsRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/pricing': {
-      id: '/dashboard/pricing'
-      path: '/pricing'
-      fullPath: '/dashboard/pricing'
-      preLoaderRoute: typeof DashboardPricingRouteImport
-      parentRoute: typeof DashboardRoute
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/dashboard'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dashboard/payments': {
       id: '/dashboard/payments'
-      path: '/payments'
+      path: '/dashboard/payments'
       fullPath: '/dashboard/payments'
       preLoaderRoute: typeof DashboardPaymentsRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/customers': {
-      id: '/dashboard/customers'
-      path: '/customers'
-      fullPath: '/dashboard/customers'
-      preLoaderRoute: typeof DashboardCustomersRouteImport
-      parentRoute: typeof DashboardRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
-interface DashboardRouteChildren {
-  DashboardCustomersRoute: typeof DashboardCustomersRoute
-  DashboardPaymentsRoute: typeof DashboardPaymentsRoute
-  DashboardPricingRoute: typeof DashboardPricingRoute
-  DashboardProductsRoute: typeof DashboardProductsRoute
-  DashboardSubscriptionsRoute: typeof DashboardSubscriptionsRoute
-  DashboardWebhooksRoute: typeof DashboardWebhooksRoute
-}
-
-const DashboardRouteChildren: DashboardRouteChildren = {
-  DashboardCustomersRoute: DashboardCustomersRoute,
-  DashboardPaymentsRoute: DashboardPaymentsRoute,
-  DashboardPricingRoute: DashboardPricingRoute,
-  DashboardProductsRoute: DashboardProductsRoute,
-  DashboardSubscriptionsRoute: DashboardSubscriptionsRoute,
-  DashboardWebhooksRoute: DashboardWebhooksRoute,
-}
-
-const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
-  DashboardRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  R404Route: R404Route,
-  DashboardRoute: DashboardRouteWithChildren,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
+  DashboardPaymentsRoute: DashboardPaymentsRoute,
+  DashboardIndexRoute: DashboardIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

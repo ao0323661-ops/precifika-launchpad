@@ -1,44 +1,111 @@
--- Alter tables to add external IDs and gateway provider
-ALTER TABLE public.customers 
-ADD COLUMN IF NOT EXISTS external_customer_id TEXT,
-ADD COLUMN IF NOT EXISTS gateway_provider TEXT DEFAULT 'abacatepay';
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable/index";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { LogIn } from "lucide-react";
 
-ALTER TABLE public.subscriptions 
-ADD COLUMN IF NOT EXISTS external_subscription_id TEXT,
-ADD COLUMN IF NOT EXISTS gateway_provider TEXT DEFAULT 'abacatepay';
+export const Route = createFileRoute("/login")({
+  component: Login,
+});
 
-ALTER TABLE public.payments 
-ADD COLUMN IF NOT EXISTS external_payment_id TEXT,
-ADD COLUMN IF NOT EXISTS gateway_provider TEXT DEFAULT 'abacatepay';
+function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
--- Create index for faster lookups during webhooks
-CREATE INDEX IF NOT EXISTS idx_customers_external_id ON public.customers(external_customer_id, gateway_provider);
-CREATE INDEX IF NOT EXISTS idx_subscriptions_external_id ON public.subscriptions(external_subscription_id, gateway_provider);
-CREATE INDEX IF NOT EXISTS idx_payments_external_id ON public.payments(external_payment_id, gateway_provider);
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading) return;
 
--- Create webhook_logs table
-CREATE TABLE IF NOT EXISTS public.webhook_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id),
-    event_id TEXT,
-    event_type TEXT NOT NULL,
-    payload JSONB NOT NULL,
-    status TEXT DEFAULT 'pending', -- pending, processed, error, duplicated
-    error_message TEXT,
-    gateway_provider TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    processed_at TIMESTAMP WITH TIME ZONE
-);
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        toast.error(
+          error.message === "Invalid login credentials"
+            ? "E-mail ou senha incorretos."
+            : error.message,
+        );
+      } else {
+        toast.success("Bem-vindo de volta!");
+        navigate({ to: "/dashboard" });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
--- Enable RLS
-ALTER TABLE public.webhook_logs ENABLE ROW LEVEL SECURITY;
+  const handleGoogleLogin = async () => {
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin + "/dashboard",
+    });
+    if (result.error) toast.error(result.error.message);
+  };
 
--- Policies for webhook_logs
-CREATE POLICY "Users can view their own webhook logs"
-ON public.webhook_logs
-FOR SELECT
-USING (auth.uid() = user_id);
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-md space-y-8 rounded-2xl border border-border bg-card p-8 shadow-xl">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold tracking-tight">Entrar no Precifika</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Acesse seu painel de controle</p>
+        </div>
+        <form onSubmit={handleLogin} className="mt-8 space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="exemplo@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+            </div>
+          </div>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Entrando..." : "Entrar"}
+          </Button>
+        </form>
 
--- Note: Insert policy for Edge Function is not needed if using service_role,
--- but if we want to be safe and the edge function uses the user's token (not likely for webhooks)
--- For webhooks, we usually use service_role to bypass RLS or handle auth manually.
+        <div className="relative mt-6">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-border"></span>
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-card px-2 text-muted-foreground">Ou continue com</span>
+          </div>
+        </div>
+
+        <Button variant="outline" className="mt-4 w-full gap-2" onClick={handleGoogleLogin}>
+          <LogIn className="h-4 w-4" />
+          Google
+        </Button>
+
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Não tem uma conta?{" "}
+          <a href="/signup" className="font-medium text-primary hover:underline">
+            Criar conta
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+}
