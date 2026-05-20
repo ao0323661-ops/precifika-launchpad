@@ -18,9 +18,10 @@ import { cn } from "@/lib/utils";
 
 interface SidebarProps {
   children: ReactNode;
+  isDemo?: boolean;
 }
 
-export function DashboardLayout({ children }: SidebarProps) {
+export function DashboardLayout({ children, isDemo }: SidebarProps) {
   const { logout, session } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -132,7 +133,17 @@ export function DashboardLayout({ children }: SidebarProps) {
             <Menu className="h-5 w-5 text-slate-600" />
           </button>
           <div className="flex-1 flex justify-end items-center gap-4">
-            {/* Optional Topbar items */}
+            {isDemo && (
+              <div className="flex items-center gap-2 px-3 py-1 bg-amber-100 border border-amber-200 rounded-full">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+                <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                  Modo Demonstração
+                </span>
+              </div>
+            )}
           </div>
         </header>
         <main className="flex-1 p-4 md:p-8 overflow-x-hidden">{children}</main>
