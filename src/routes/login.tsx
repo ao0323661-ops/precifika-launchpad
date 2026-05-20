@@ -1,6 +1,6 @@
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { supabase } from "@/integrations/supabase/client";
-import { Outlet, createFileRoute, redirect, useLocation } from "@tanstack/react-router";
+import { Outlet, createFileRoute, redirect, useLocation, useNavigate } from "@tanstack/react-router";
 import { Lock, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -66,7 +66,7 @@ function DashboardShell() {
             >
               Ver Planos e Precos
             </Button>
-            <Button variant="ghost" onClick={() => navigate({ to: "/" })}>
+            <Button variant="ghost" onClick={() => window.location.href = "/"}>
               Voltar para a Home
             </Button>
           </div>
