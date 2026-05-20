@@ -10,8 +10,7 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
     const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
     if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-      console.error("[Supabase] Missing environment variables in auth middleware");
-      return next(); // Continue without auth context instead of crashing
+      throw new Error("Supabase environment variables are missing. Please connect Supabase in Lovable Cloud.");
     }
 
     const request = getRequest();
