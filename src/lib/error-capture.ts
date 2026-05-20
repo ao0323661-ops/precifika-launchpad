@@ -10,9 +10,9 @@ export function consumeLastCapturedError(): Error | null {
   return error;
 }
 
-if (typeof process !== 'undefined') {
-  process.on('uncaughtException', captureError);
-  process.on('unhandledRejection', (reason) => {
+if (typeof process !== "undefined") {
+  process.on("uncaughtException", captureError);
+  process.on("unhandledRejection", (reason) => {
     if (reason instanceof Error) {
       captureError(reason);
     } else {
