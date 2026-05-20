@@ -122,8 +122,25 @@ serve(async (req) => {
     if (event === "checkout.completed") {
       const checkout = data.checkout;
       const customerData = data.customer;
+      const planId = checkout.metadata?.planId;
 
-      // Create/Update Customer
+      // Check if it's a SaaS Subscription (billing the user of Precifika)
+      if (planId) {
+        const expiresAt = new Date();
+        expiresAt.setMonth(expiresAt.getMonth() + 1); // Default to 1 month
+
+        await supabase.from("saas_subscriptions").upsert({
+          user_id: userId,
+          plan_name: planId,
+          status: "active",
+          external_subscription_id: checkout.id,
+          gateway_provider: "abacatepay",
+          expires_at: expiresAt.toISOString(),
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+      }
+
+      // Create/Update Customer in their own dashboard context
       const { data: customer, error: custErr } = await supabase.from("customers").upsert({
         user_id: userId,
         email: customerData.email,
@@ -139,7 +156,7 @@ serve(async (req) => {
       const { error: payErr } = await supabase.from("payments").insert({
         user_id: userId,
         customer_id: customer.id,
-        amount: checkout.amount / 100, // Abacate uses cents
+        amount: checkout.amount / 100,
         status: "paid",
         payment_method: checkout.methods?.[0] || "PIX",
         external_payment_id: checkout.id,
@@ -152,31 +169,32 @@ serve(async (req) => {
     if (event.startsWith("subscription.")) {
       const sub = data.subscription;
       const customerData = data.customer;
-
-      // Find or create customer
-      const { data: customer } = await supabase.from("customers").upsert({
-        user_id: userId,
-        email: customerData.email,
-        name: customerData.name,
-        external_customer_id: customerData.id,
-        gateway_provider: "abacatepay",
-        status: "active"
-      }, { onConflict: 'user_id,email' }).select().single();
+      const planId = sub.metadata?.planId;
 
       const subStatus = sub.status === "ACTIVE" ? "active" : 
                         sub.status === "CANCELED" ? "canceled" : 
                         sub.status === "OVERDUE" ? "pending" : "inactive";
 
+      if (planId) {
+         await supabase.from("saas_subscriptions").upsert({
+          user_id: userId,
+          plan_name: planId,
+          status: subStatus,
+          external_subscription_id: sub.id,
+          gateway_provider: "abacatepay",
+          expires_at: sub.nextBillingAt || sub.expiresAt,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+      }
+
+      // Find or create customer
+      const { data: customer } = await supabase.from("customers").upsert({
+...
+      }, { onConflict: 'user_id,email' }).select().single();
+
       // Upsert Subscription
       const { error: subErr } = await supabase.from("subscriptions").upsert({
-        user_id: userId,
-        customer_id: customer.id,
-        external_subscription_id: sub.id,
-        plan_name: sub.product?.name || "Assinatura AbacatePay",
-        amount: sub.amount / 100,
-        status: subStatus,
-        gateway_provider: "abacatepay",
-        current_period_end: sub.nextBillingAt || sub.expiresAt,
+...
         updated_at: new Date().toISOString()
       }, { onConflict: 'external_subscription_id' });
 
