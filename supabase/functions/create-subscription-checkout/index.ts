@@ -18,12 +18,14 @@ serve(async (req) => {
       global: { headers: { Authorization: req.headers.get("Authorization")! } },
     });
 
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    const {
+      data: { user },
+    } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Unauthorized");
 
     const { planId, frequency } = await req.json();
 
-    const planData: Record<string, any> = {
+    const planData: Record<string, { name: string; amount: number }> = {
       starter: { name: "Plano Starter", amount: 4990 },
       pro: { name: "Plano Pro", amount: 9990 },
       premium: { name: "Plano Premium", amount: 19990 },
@@ -37,25 +39,27 @@ serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${ABACATEPAY_API_KEY}`
+        Authorization: `Bearer ${ABACATEPAY_API_KEY}`,
       },
       body: JSON.stringify({
         frequency: frequency || "MONTHLY",
         methods: ["PIX"],
-        products: [{
-          name: selectedPlan.name,
-          quantity: 1,
-          price: selectedPlan.amount,
-        }],
+        products: [
+          {
+            name: selectedPlan.name,
+            quantity: 1,
+            price: selectedPlan.amount,
+          },
+        ],
         returnUrl: `${req.headers.get("origin")}/dashboard`,
         completionUrl: `${req.headers.get("origin")}/dashboard?success=true`,
         customerId: user.id, // We'll use this to match in webhook
         externalId: user.id,
         metadata: {
           userId: user.id,
-          planId: planId
-        }
-      })
+          planId: planId,
+        },
+      }),
     });
 
     const result = await response.json();
@@ -65,7 +69,6 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

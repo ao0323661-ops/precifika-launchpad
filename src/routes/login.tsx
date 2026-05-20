@@ -43,11 +43,25 @@ function Login() {
         <form onSubmit={handleLogin} className="mt-8 space-y-6">
           <div className="space-y-2">
             <Label htmlFor="email">E-mail</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Senha</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Entrando..." : "Entrar"}
@@ -55,7 +69,9 @@ function Login() {
         </form>
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Não tem conta?{" "}
-          <a href="/signup" className="font-medium text-primary hover:underline">Cadastre-se</a>
+          <a href="/signup" className="font-medium text-primary hover:underline">
+            Cadastre-se
+          </a>
         </p>
       </div>
     </div>

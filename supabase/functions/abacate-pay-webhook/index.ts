@@ -4,7 +4,9 @@ import { crypto } from "https://deno.land/std@0.177.0/crypto/mod.ts";
 import { encode as encodeBase64 } from "https://deno.land/std@0.177.0/encoding/base64.ts";
 
 const ABACATEPAY_API_KEY = Deno.env.get("ABACATEPAY_API_KEY");
-const ABACATE_PUBLIC_KEY = Deno.env.get("ABACATEPAY_PUBLIC_KEY") || "t9dXRhHHo3yDEj5pVDYz0frf7q6bMKyMRmxxCPIPp3RCplBfXRxqlC6ZpiWmOqj4L63qEaeUOtrCI8P0VMUgo6iIga2ri9ogaHFs0WIIywSMg0q7RmBfybe1E5XJcfC4IW3alNqym0tXoAKkzvfEjZxV6bE0oG2zJrNNYmUCKZyV0KZ3JS8Votf9EAWWYdiDkMkpbMdPggfh1EqHlVkMiTady6jOR3hyzGEHrIz2Ret0xHKMbiqkr9HS1JhNHDX9";
+const ABACATE_PUBLIC_KEY =
+  Deno.env.get("ABACATEPAY_PUBLIC_KEY") ||
+  "t9dXRhHHo3yDEj5pVDYz0frf7q6bMKyMRmxxCPIPp3RCplBfXRxqlC6ZpiWmOqj4L63qEaeUOtrCI8P0VMUgo6iIga2ri9ogaHFs0WIIywSMg0q7RmBfybe1E5XJcfC4IW3alNqym0tXoAKkzvfEjZxV6bE0oG2zJrNNYmUCKZyV0KZ3JS8Votf9EAWWYdiDkMkpbMdPggfh1EqHlVkMiTady6jOR3hyzGEHrIz2Ret0xHKMbiqkr9HS1JhNHDX9";
 const WEBHOOK_SECRET = Deno.env.get("ABACATEPAY_WEBHOOK_SECRET");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -13,20 +15,16 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 async function verifySignature(rawBody: string, signature: string | null): Promise<boolean> {
   if (!signature) return false;
-  
+
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(ABACATE_PUBLIC_KEY),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
 
-  const sigBuffer = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(rawBody)
-  );
+  const sigBuffer = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody));
 
   const expectedSig = encodeBase64(sigBuffer);
   return expectedSig === signature;
@@ -43,7 +41,7 @@ serve(async (req) => {
 
   const rawBody = await req.text();
   const signature = req.headers.get("X-Webhook-Signature");
-  
+
   let payload;
   try {
     payload = JSON.parse(rawBody);
@@ -59,7 +57,7 @@ serve(async (req) => {
       event_type: payload.event,
       payload: payload,
       gateway_provider: "abacatepay",
-      status: "pending"
+      status: "pending",
     })
     .select()
     .single();
@@ -68,10 +66,13 @@ serve(async (req) => {
 
   // 2. Security Validation
   const isValid = await verifySignature(rawBody, signature);
-  
+
   if (!isValid && signature) {
-     await supabase.from("webhook_logs").update({ status: "error", error_message: "Invalid Signature" }).eq("id", logEntry?.id);
-     return new Response(JSON.stringify({ error: "Invalid Signature" }), { status: 401 });
+    await supabase
+      .from("webhook_logs")
+      .update({ status: "error", error_message: "Invalid Signature" })
+      .eq("id", logEntry?.id);
+    return new Response(JSON.stringify({ error: "Invalid Signature" }), { status: 401 });
   }
 
   try {
@@ -91,9 +92,13 @@ serve(async (req) => {
     // 4. Extract data and map User
     const event = payload.event;
     const data = payload.data;
-    
-    let userId = data?.checkout?.metadata?.userId || data?.subscription?.metadata?.userId || data?.checkout?.externalId || data?.subscription?.externalId;
-    
+
+    let userId =
+      data?.checkout?.metadata?.userId ||
+      data?.subscription?.metadata?.userId ||
+      data?.checkout?.externalId ||
+      data?.subscription?.externalId;
+
     if (!userId && data?.customer?.email) {
       const { data: customer } = await supabase
         .from("customers")
@@ -105,8 +110,11 @@ serve(async (req) => {
     }
 
     if (!userId) {
-       await supabase.from("webhook_logs").update({ status: "error", error_message: "User context not found" }).eq("id", logEntry?.id);
-       return new Response(JSON.stringify({ error: "User not found" }), { status: 200 });
+      await supabase
+        .from("webhook_logs")
+        .update({ status: "error", error_message: "User context not found" })
+        .eq("id", logEntry?.id);
+      return new Response(JSON.stringify({ error: "User not found" }), { status: 200 });
     }
 
     // Update log with user_id
@@ -121,25 +129,35 @@ serve(async (req) => {
       if (planId) {
         const expiresAt = new Date();
         expiresAt.setMonth(expiresAt.getMonth() + 1);
-        await supabase.from("saas_subscriptions").upsert({
-          user_id: userId,
-          plan_name: planId,
-          status: "active",
-          external_subscription_id: checkout.id,
-          gateway_provider: "abacatepay",
-          expires_at: expiresAt.toISOString(),
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
+        await supabase.from("saas_subscriptions").upsert(
+          {
+            user_id: userId,
+            plan_name: planId,
+            status: "active",
+            external_subscription_id: checkout.id,
+            gateway_provider: "abacatepay",
+            expires_at: expiresAt.toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" },
+        );
       }
 
-      const { data: customer, error: custErr } = await supabase.from("customers").upsert({
-        user_id: userId,
-        email: customerData.email,
-        name: customerData.name,
-        external_customer_id: customerData.id,
-        gateway_provider: "abacatepay",
-        status: "active"
-      }, { onConflict: 'user_id,email' }).select().single();
+      const { data: customer, error: custErr } = await supabase
+        .from("customers")
+        .upsert(
+          {
+            user_id: userId,
+            email: customerData.email,
+            name: customerData.name,
+            external_customer_id: customerData.id,
+            gateway_provider: "abacatepay",
+            status: "active",
+          },
+          { onConflict: "user_id,email" },
+        )
+        .select()
+        .single();
 
       if (custErr) throw custErr;
 
@@ -151,7 +169,7 @@ serve(async (req) => {
         payment_method: checkout.methods?.[0] || "PIX",
         external_payment_id: checkout.id,
         gateway_provider: "abacatepay",
-        paid_at: new Date().toISOString()
+        paid_at: new Date().toISOString(),
       });
       if (payErr) throw payErr;
     }
@@ -161,59 +179,83 @@ serve(async (req) => {
       const customerData = data.customer;
       const planId = sub.metadata?.planId;
 
-      const subStatus = sub.status === "ACTIVE" ? "active" : 
-                        sub.status === "CANCELED" ? "canceled" : 
-                        sub.status === "OVERDUE" ? "pending" : "inactive";
+      const subStatus =
+        sub.status === "ACTIVE"
+          ? "active"
+          : sub.status === "CANCELED"
+            ? "canceled"
+            : sub.status === "OVERDUE"
+              ? "pending"
+              : "inactive";
 
       if (planId) {
-         await supabase.from("saas_subscriptions").upsert({
-          user_id: userId,
-          plan_name: planId,
-          status: subStatus,
-          external_subscription_id: sub.id,
-          gateway_provider: "abacatepay",
-          expires_at: sub.nextBillingAt || sub.expiresAt,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
+        await supabase.from("saas_subscriptions").upsert(
+          {
+            user_id: userId,
+            plan_name: planId,
+            status: subStatus,
+            external_subscription_id: sub.id,
+            gateway_provider: "abacatepay",
+            expires_at: sub.nextBillingAt || sub.expiresAt,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" },
+        );
       }
 
-      const { data: customer } = await supabase.from("customers").upsert({
-        user_id: userId,
-        email: customerData.email,
-        name: customerData.name,
-        external_customer_id: customerData.id,
-        gateway_provider: "abacatepay",
-        status: "active"
-      }, { onConflict: 'user_id,email' }).select().single();
+      const { data: customer } = await supabase
+        .from("customers")
+        .upsert(
+          {
+            user_id: userId,
+            email: customerData.email,
+            name: customerData.name,
+            external_customer_id: customerData.id,
+            gateway_provider: "abacatepay",
+            status: "active",
+          },
+          { onConflict: "user_id,email" },
+        )
+        .select()
+        .single();
 
       if (customer) {
-        const { error: subErr } = await supabase.from("subscriptions").upsert({
-          user_id: userId,
-          customer_id: customer.id,
-          external_subscription_id: sub.id,
-          plan_name: sub.product?.name || "Assinatura AbacatePay",
-          amount: sub.amount / 100,
-          status: subStatus,
-          gateway_provider: "abacatepay",
-          current_period_end: sub.nextBillingAt || sub.expiresAt,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'external_subscription_id' });
+        const { error: subErr } = await supabase.from("subscriptions").upsert(
+          {
+            user_id: userId,
+            customer_id: customer.id,
+            external_subscription_id: sub.id,
+            plan_name: sub.product?.name || "Assinatura AbacatePay",
+            amount: sub.amount / 100,
+            status: subStatus,
+            gateway_provider: "abacatepay",
+            current_period_end: sub.nextBillingAt || sub.expiresAt,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "external_subscription_id" },
+        );
         if (subErr) throw subErr;
       }
     }
 
-    await supabase.from("webhook_logs").update({ 
-      status: "processed", 
-      processed_at: new Date().toISOString() 
-    }).eq("id", logEntry?.id);
+    await supabase
+      .from("webhook_logs")
+      .update({
+        status: "processed",
+        processed_at: new Date().toISOString(),
+      })
+      .eq("id", logEntry?.id);
 
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (err) {
     console.error("Webhook processing error:", err);
-    await supabase.from("webhook_logs").update({ 
-      status: "error", 
-      error_message: err.message 
-    }).eq("id", logEntry?.id);
+    await supabase
+      .from("webhook_logs")
+      .update({
+        status: "error",
+        error_message: err.message,
+      })
+      .eq("id", logEntry?.id);
     return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 });

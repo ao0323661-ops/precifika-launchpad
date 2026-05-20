@@ -25,8 +25,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Precifika — Precificação inteligente" },
       {
         property: "og:description",
-        content:
-          "Calcule preços lucrativos, analise margens e escale seu negócio com a Precifika.",
+        content: "Calcule preços lucrativos, analise margens e escale seu negócio com a Precifika.",
       },
     ],
   }),
@@ -77,15 +76,15 @@ function Header({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => voi
           <Button variant="ghost" size="sm" asChild>
             <a href="/login">Entrar</a>
           </Button>
-          <Button size="sm" className="bg-gradient-to-r from-primary to-primary-glow shadow-md shadow-primary/25 hover:opacity-90" asChild>
+          <Button
+            size="sm"
+            className="bg-gradient-to-r from-primary to-primary-glow shadow-md shadow-primary/25 hover:opacity-90"
+            asChild
+          >
             <a href="/signup">Cadastrar</a>
           </Button>
         </div>
-        <button
-          className="md:hidden"
-          aria-label="Menu"
-          onClick={() => setOpen(!open)}
-        >
+        <button className="md:hidden" aria-label="Menu" onClick={() => setOpen(!open)}>
           {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
@@ -137,9 +136,8 @@ function Hero() {
             de verdade.
           </h1>
           <p className="mt-6 text-lg text-muted-foreground sm:text-xl">
-            Precifika é a plataforma que ajuda empreendedores e indústrias a
-            precificar com clareza, analisar margens e tomar decisões com
-            confiança.
+            Precifika é a plataforma que ajuda empreendedores e indústrias a precificar com clareza,
+            analisar margens e tomar decisões com confiança.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button
@@ -216,9 +214,7 @@ function Benefits() {
                 <b.icon className="h-5 w-5" />
               </div>
               <h3 className="mt-5 text-lg font-semibold">{b.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                {b.desc}
-              </p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{b.desc}</p>
             </div>
           ))}
         </div>
@@ -233,12 +229,7 @@ function Plans() {
       name: "Starter",
       price: "R$ 49",
       desc: "Para quem está começando a profissionalizar a precificação.",
-      features: [
-        "Até 50 produtos",
-        "Cálculo de margem e custo",
-        "1 usuário",
-        "Suporte por email",
-      ],
+      features: ["Até 50 produtos", "Cálculo de margem e custo", "1 usuário", "Suporte por email"],
       cta: "Começar grátis",
       highlight: false,
     },

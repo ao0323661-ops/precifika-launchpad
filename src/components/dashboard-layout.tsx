@@ -1,17 +1,17 @@
 import { ReactNode } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { 
-  LayoutDashboard, 
-  Users, 
-  CreditCard, 
-  Package, 
-  BarChart3, 
-  Settings, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  Users,
+  CreditCard,
+  Package,
+  BarChart3,
+  Settings,
+  LogOut,
   Sparkles,
   Menu,
   X,
-  Activity
+  Activity,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -53,9 +53,9 @@ export function DashboardLayout({ children }: SidebarProps) {
               href={item.href}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                currentPath === item.href 
-                  ? "bg-primary text-white shadow-sm" 
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                currentPath === item.href
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
               )}
             >
               <item.icon className="h-4 w-4" />
@@ -69,11 +69,12 @@ export function DashboardLayout({ children }: SidebarProps) {
               {session?.user?.email?.[0].toUpperCase()}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="truncate text-xs font-medium text-slate-900">
-                {session?.user?.email}
-              </p>
+              <p className="truncate text-xs font-medium text-slate-900">{session?.user?.email}</p>
             </div>
-            <button onClick={logout} className="text-slate-400 hover:text-red-500 transition-colors">
+            <button
+              onClick={logout}
+              className="text-slate-400 hover:text-red-500 transition-colors"
+            >
               <LogOut className="h-4 w-4" />
             </button>
           </div>
@@ -82,17 +83,19 @@ export function DashboardLayout({ children }: SidebarProps) {
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm md:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* Sidebar Mobile */}
-      <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-2xl transition-transform duration-300 ease-in-out md:hidden",
-        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-2xl transition-transform duration-300 ease-in-out md:hidden",
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
         <div className="flex h-16 items-center border-b border-slate-100 px-6 justify-between">
           <span className="text-xl font-bold text-primary">Precifika</span>
           <button onClick={() => setIsMobileMenuOpen(false)}>
@@ -107,9 +110,9 @@ export function DashboardLayout({ children }: SidebarProps) {
               onClick={() => setIsMobileMenuOpen(false)}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                currentPath === item.href 
-                  ? "bg-primary text-white" 
-                  : "text-slate-600 hover:bg-slate-50"
+                currentPath === item.href
+                  ? "bg-primary text-white"
+                  : "text-slate-600 hover:bg-slate-50",
               )}
             >
               <item.icon className="h-4 w-4" />
@@ -122,7 +125,7 @@ export function DashboardLayout({ children }: SidebarProps) {
       {/* Content Wrapper */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 md:px-8 sticky top-0 z-30">
-          <button 
+          <button
             onClick={() => setIsMobileMenuOpen(true)}
             className="md:hidden rounded-lg p-2 hover:bg-slate-100"
           >
@@ -132,9 +135,7 @@ export function DashboardLayout({ children }: SidebarProps) {
             {/* Optional Topbar items */}
           </div>
         </header>
-        <main className="flex-1 p-4 md:p-8 overflow-x-hidden">
-          {children}
-        </main>
+        <main className="flex-1 p-4 md:p-8 overflow-x-hidden">{children}</main>
       </div>
     </div>
   );
