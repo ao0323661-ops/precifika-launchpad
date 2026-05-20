@@ -1,11 +1,44 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect, useLocation } from "@tanstack/react-router";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { supabase } from "@/integrations/supabase/client";
 import { Lock, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DEMO_USER, isDemoUser } from "@/lib/demo-config";
+import type { Session } from "@supabase/supabase-js";
+
+function createDemoSession(): Session {
+  return {
+    access_token: "demo-session",
+    refresh_token: "demo-session",
+    expires_in: 3600,
+    token_type: "bearer",
+    user: {
+      id: "demo-user",
+      aud: "authenticated",
+      role: "authenticated",
+      email: DEMO_USER.email,
+      app_metadata: {},
+      user_metadata: { name: "Usuário demo" },
+      created_at: "2026-01-01T00:00:00.000Z",
+    },
+  } as Session;
+}
 
 export const Route = createFileRoute("/dashboard")({
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
+    const demoParam = new URLSearchParams(location.searchStr).get("demo");
+    const isDemoRoute = demoParam === "1" || demoParam === '"1"';
+
+    if (isDemoRoute) {
+      return {
+        session: createDemoSession(),
+        subscription: null,
+        isActive: true,
+        isExpired: false,
+        isDemo: true,
+      };
+    }
+
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -14,7 +47,7 @@ export const Route = createFileRoute("/dashboard")({
       throw redirect({ to: "/login" });
     }
 
-    if (session.user.email === "demo@precifika.com") {
+    if (isDemoUser(session.user.email)) {
       return { session, subscription: null, isActive: true, isExpired: false, isDemo: true };
     }
 
@@ -35,16 +68,14 @@ export const Route = createFileRoute("/dashboard")({
 
 function DashboardShell() {
   const { isActive, isExpired, isDemo } = Route.useRouteContext();
-
-  // Se estiver na rota de pricing, permite ver mesmo sem assinatura ativa
-  // Mas no TanStack Start, podemos verificar o path via useLocation se necessário,
-  // ou simplesmente definir que o layout lida com o estado global.
+  const location = useLocation();
+  const canViewPricing = location.pathname === "/dashboard/pricing";
 
   return (
     <DashboardLayout isDemo={isDemo}>
-      {!isActive ? (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 max-w-lg mx-auto">
-          <div className="h-20 w-20 rounded-full bg-amber-50 flex items-center justify-center">
+      {!isActive && !canViewPricing ? (
+        <div className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center space-y-6 text-center">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-amber-50">
             {isExpired ? (
               <RefreshCw className="h-10 w-10 text-amber-600" />
             ) : (
@@ -53,24 +84,20 @@ function DashboardShell() {
           </div>
           <div className="space-y-2">
             <h2 className="text-3xl font-extrabold text-slate-900">
-              {isExpired ? "Assinatura Expirada" : "Acesso Limitado"}
+              {isExpired ? "Renove seu acesso ao Precifika" : "Ative seu teste ou escolha um plano"}
             </h2>
             <p className="text-slate-500">
               {isExpired
-                ? "Sua assinatura do Precifika expirou. Renove agora para continuar gerenciando seus clientes e pagamentos."
-                : "Você ainda não possui uma assinatura ativa. Escolha um plano para liberar todas as funcionalidades do dashboard."}
+                ? "Sua assinatura expirou. Para continuar usando o dashboard, renove seu plano na tela de preços."
+                : "Não encontramos uma assinatura ativa para esta conta. Você pode iniciar um teste gratuito ou escolher um plano para liberar o dashboard."}
             </p>
           </div>
-          <div className="flex flex-col gap-3 w-full">
-            <Button
-              onClick={() => (window.location.href = "/dashboard/pricing")}
-              size="lg"
-              className="w-full text-lg font-bold py-6"
-            >
-              Ver Planos e Preços
+          <div className="flex w-full flex-col gap-3">
+            <Button size="lg" className="w-full py-6 text-lg font-bold" asChild>
+              <Link to="/dashboard/pricing">Ver planos e preços</Link>
             </Button>
-            <Button variant="ghost" onClick={() => (window.location.href = "/")}>
-              Voltar para a Home
+            <Button variant="ghost" asChild>
+              <Link to="/">Voltar para a página inicial</Link>
             </Button>
           </div>
         </div>

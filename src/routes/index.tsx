@@ -10,8 +10,10 @@ import {
   ShieldCheck,
   Menu,
   X,
+  Loader2,
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -34,11 +36,28 @@ export const Route = createFileRoute("/")({
 
 function Landing() {
   const [open, setOpen] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  const handleDemoAccess = async () => {
+    if (demoLoading) return;
+
+    setDemoLoading(true);
+    try {
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+      toast.success("Ambiente de demonstração carregado com dados fictícios.");
+      window.location.assign("/dashboard?demo=1");
+    } catch {
+      toast.error("Não foi possível abrir a demonstração agora. Tente novamente em instantes.");
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header open={open} setOpen={setOpen} />
       <main>
-        <Hero />
+        <Hero demoLoading={demoLoading} onDemoAccess={handleDemoAccess} />
         <Benefits />
         <Plans />
       </main>
@@ -76,13 +95,6 @@ function Header({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => voi
           <Button variant="ghost" size="sm" asChild>
             <a href="/login">Entrar</a>
           </Button>
-          <Button
-            size="sm"
-            className="bg-gradient-to-r from-primary to-primary-glow shadow-md shadow-primary/25 hover:opacity-90"
-            asChild
-          >
-            <a href="/signup">Cadastrar</a>
-          </Button>
         </div>
         <button className="md:hidden" aria-label="Menu" onClick={() => setOpen(!open)}>
           {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -105,9 +117,6 @@ function Header({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => voi
               <Button variant="outline" size="sm" asChild>
                 <a href="/login">Entrar</a>
               </Button>
-              <Button size="sm" className="bg-gradient-to-r from-primary to-primary-glow" asChild>
-                <a href="/signup">Cadastrar</a>
-              </Button>
             </div>
           </div>
         </div>
@@ -116,7 +125,7 @@ function Header({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => voi
   );
 }
 
-function Hero() {
+function Hero({ demoLoading, onDemoAccess }: { demoLoading: boolean; onDemoAccess: () => void }) {
   return (
     <section className="relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0 -z-10">
@@ -145,10 +154,17 @@ function Hero() {
               className="w-full bg-gradient-to-r from-primary to-primary-glow shadow-lg shadow-primary/30 hover:opacity-90 sm:w-auto"
               asChild
             >
-              <a href="/signup">Começar grátis</a>
+              <a href="/signup">Começar teste grátis</a>
             </Button>
-            <Button size="lg" variant="outline" className="w-full sm:w-auto">
-              Ver demonstração
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={onDemoAccess}
+              disabled={demoLoading}
+            >
+              {demoLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {demoLoading ? "Abrindo demonstração..." : "Ver demonstração"}
             </Button>
           </div>
           <p className="mt-4 text-xs text-muted-foreground">
@@ -230,7 +246,7 @@ function Plans() {
       price: "R$ 49",
       desc: "Para quem está começando a profissionalizar a precificação.",
       features: ["Até 50 produtos", "Cálculo de margem e custo", "1 usuário", "Suporte por email"],
-      cta: "Começar grátis",
+      cta: "Começar teste grátis",
       highlight: false,
     },
     {
@@ -244,7 +260,7 @@ function Plans() {
         "Simulações de cenário",
         "Suporte prioritário",
       ],
-      cta: "Assinar Pro",
+      cta: "Começar teste grátis",
       highlight: true,
     },
     {
@@ -258,7 +274,7 @@ function Plans() {
         "Gerente de conta dedicado",
         "SLA personalizado",
       ],
-      cta: "Falar com vendas",
+      cta: "Começar teste grátis",
       highlight: false,
     },
   ];
@@ -301,8 +317,9 @@ function Plans() {
                     : "mt-6 w-full"
                 }
                 variant={p.highlight ? "default" : "outline"}
+                asChild
               >
-                {p.cta}
+                <a href="/signup">{p.cta}</a>
               </Button>
               <ul className="mt-8 space-y-3">
                 {p.features.map((f) => (

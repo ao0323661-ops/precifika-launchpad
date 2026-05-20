@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, getRouteApi } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Check, Sparkles, ArrowRight, ShieldCheck, Zap, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ export const Route = createFileRoute("/dashboard/pricing")({
   component: PricingPage,
 });
 
+const dashboardRoute = getRouteApi("/dashboard");
+
 const PLANS = [
   {
     id: "starter",
@@ -16,7 +18,8 @@ const PLANS = [
     price: 49.9,
     description: "Ideal para quem está começando.",
     icon: Zap,
-    color: "blue",
+    iconWrapClassName: "bg-blue-100",
+    iconClassName: "text-blue-600",
     features: [
       "Até 50 clientes",
       "Até 100 assinaturas",
@@ -31,7 +34,8 @@ const PLANS = [
     price: 99.9,
     description: "Para produtores em crescimento.",
     icon: Sparkles,
-    color: "primary",
+    iconWrapClassName: "bg-primary",
+    iconClassName: "text-white",
     recommended: true,
     features: [
       "Clientes ilimitados",
@@ -48,7 +52,8 @@ const PLANS = [
     price: 199.9,
     description: "O poder total para o seu SaaS.",
     icon: Crown,
-    color: "amber",
+    iconWrapClassName: "bg-amber-100",
+    iconClassName: "text-amber-600",
     features: [
       "Tudo do plano Pro",
       "White-label (em breve)",
@@ -61,9 +66,15 @@ const PLANS = [
 ];
 
 function PricingPage() {
+  const { isDemo } = dashboardRoute.useRouteContext();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
   async function handleSubscribe(planId: string) {
+    if (isDemo) {
+      toast.info("Checkout real bloqueado no ambiente de demonstração.");
+      return;
+    }
+
     setLoadingPlan(planId);
     try {
       const { data, error } = await supabase.functions.invoke("create-subscription-checkout", {
@@ -73,6 +84,8 @@ function PricingPage() {
       if (error) throw error;
       if (data?.url) {
         window.location.href = data.url;
+      } else {
+        toast.error("Não recebemos o link de pagamento. Tente novamente em instantes.");
       }
     } catch (err) {
       console.error(err);
@@ -93,8 +106,14 @@ function PricingPage() {
             Escolha o plano ideal para seu negócio
           </p>
           <p className="mt-4 max-w-2xl text-xl text-slate-500 mx-auto">
-            Comece agora com 7 dias de trial gratuito em qualquer plano.
+            Comece agora com 14 dias de trial gratuito em qualquer plano.
           </p>
+          {isDemo && (
+            <div className="mx-auto mt-6 max-w-2xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Você está no ambiente de demonstração. O checkout real fica bloqueado para evitar
+              cobranças ou alterações fora de uma conta real.
+            </div>
+          )}
         </div>
 
         <div className="grid gap-8 lg:grid-cols-3">
@@ -115,11 +134,9 @@ function PricingPage() {
 
               <div className="mb-8">
                 <div
-                  className={`h-12 w-12 rounded-xl bg-${plan.color === "primary" ? "primary" : plan.color + "-100"} flex items-center justify-center mb-4`}
+                  className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl ${plan.iconWrapClassName}`}
                 >
-                  <plan.icon
-                    className={`h-6 w-6 text-${plan.color === "primary" ? "white" : plan.color + "-600"}`}
-                  />
+                  <plan.icon className={`h-6 w-6 ${plan.iconClassName}`} />
                 </div>
                 <h3 className="text-2xl font-bold text-slate-900">{plan.name}</h3>
                 <p className="mt-2 text-slate-500 text-sm h-10">{plan.description}</p>
@@ -149,8 +166,12 @@ function PricingPage() {
                   plan.recommended ? "" : "bg-slate-900 hover:bg-slate-800"
                 }`}
               >
-                {loadingPlan === plan.id ? "Iniciando..." : "Assinar agora"}
-                <ArrowRight className="h-5 w-5" />
+                {loadingPlan === plan.id
+                  ? "Abrindo checkout..."
+                  : isDemo
+                    ? "Checkout bloqueado na demonstração"
+                    : "Assinar agora"}
+                {!isDemo && <ArrowRight className="h-5 w-5" />}
               </Button>
             </div>
           ))}

@@ -1,12 +1,10 @@
 import { ReactNode } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard,
-  Users,
   CreditCard,
-  Package,
   BarChart3,
-  Settings,
   LogOut,
   Sparkles,
   Menu,
@@ -15,6 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { DEMO_BADGE_LABEL, DEMO_USER } from "@/lib/demo-config";
 
 interface SidebarProps {
   children: ReactNode;
@@ -24,18 +23,28 @@ interface SidebarProps {
 export function DashboardLayout({ children, isDemo }: SidebarProps) {
   const { logout, session } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const menuItems = [
     { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-    { label: "Clientes", icon: Users, href: "/dashboard/customers" },
-    { label: "Assinaturas", icon: CreditCard, href: "/dashboard/subscriptions" },
     { label: "Pagamentos", icon: BarChart3, href: "/dashboard/payments" },
-    { label: "Produtos", icon: Package, href: "/dashboard/products" },
     { label: "Webhooks", icon: Activity, href: "/dashboard/webhooks" },
-    { label: "Configurações", icon: Settings, href: "#" },
+    { label: "Planos", icon: CreditCard, href: "/dashboard/pricing" },
   ];
 
-  const currentPath = window.location.pathname;
+  const currentPath = location.pathname;
+  const displayEmail = isDemo ? DEMO_USER.email : session?.user?.email;
+  const withDemoSearch = (href: string) => (isDemo ? `${href}?demo=1` : href);
+
+  const handleLogout = () => {
+    if (isDemo) {
+      void navigate({ to: "/" });
+      return;
+    }
+
+    void logout();
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-50/50">
@@ -51,7 +60,7 @@ export function DashboardLayout({ children, isDemo }: SidebarProps) {
           {menuItems.map((item) => (
             <a
               key={item.label}
-              href={item.href}
+              href={withDemoSearch(item.href)}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 currentPath === item.href
@@ -67,13 +76,15 @@ export function DashboardLayout({ children, isDemo }: SidebarProps) {
         <div className="border-t border-slate-100 p-4">
           <div className="flex items-center gap-3 px-3 py-2">
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-              {session?.user?.email?.[0].toUpperCase()}
+              {displayEmail?.[0].toUpperCase()}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="truncate text-xs font-medium text-slate-900">{session?.user?.email}</p>
+              <p className="truncate text-xs font-medium text-slate-900">{displayEmail}</p>
             </div>
             <button
-              onClick={logout}
+              onClick={handleLogout}
+              aria-label="Sair da conta"
+              title="Sair"
               className="text-slate-400 hover:text-red-500 transition-colors"
             >
               <LogOut className="h-4 w-4" />
@@ -107,7 +118,7 @@ export function DashboardLayout({ children, isDemo }: SidebarProps) {
           {menuItems.map((item) => (
             <a
               key={item.label}
-              href={item.href}
+              href={withDemoSearch(item.href)}
               onClick={() => setIsMobileMenuOpen(false)}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
@@ -140,7 +151,7 @@ export function DashboardLayout({ children, isDemo }: SidebarProps) {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
                 </span>
                 <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">
-                  Modo Demonstração
+                  {DEMO_BADGE_LABEL}
                 </span>
               </div>
             )}

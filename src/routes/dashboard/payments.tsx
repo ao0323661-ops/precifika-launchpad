@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, getRouteApi } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useCallback, useEffect, useState } from "react";
 import { Download, CheckCircle2, XCircle, Clock, AlertTriangle } from "lucide-react";
@@ -10,6 +10,8 @@ export const Route = createFileRoute("/dashboard/payments")({
   component: PaymentsPage,
 });
 
+const dashboardRoute = getRouteApi("/dashboard");
+
 type Payment = {
   id: string;
   amount: number;
@@ -20,11 +22,19 @@ type Payment = {
 };
 
 function PaymentsPage() {
+  const { isDemo } = dashboardRoute.useRouteContext();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchPayments = useCallback(async () => {
     setLoading(true);
+
+    if (isDemo) {
+      setPayments(MOCK_PAYMENTS as unknown as Payment[]);
+      setLoading(false);
+      return;
+    }
+
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -32,12 +42,6 @@ function PaymentsPage() {
       setLoading(false);
       return;
     }
-    if (session.user.email === "demo@precifika.com") {
-      setPayments(MOCK_PAYMENTS as unknown as Payment[]);
-      setLoading(false);
-      return;
-    }
-
     const { data, error } = await supabase
       .from("payments")
       .select(`*, customers (name, email)`)
@@ -47,7 +51,7 @@ function PaymentsPage() {
     if (error) toast.error("Erro ao carregar pagamentos");
     else setPayments((data || []) as unknown as Payment[]);
     setLoading(false);
-  }, []);
+  }, [isDemo]);
 
   useEffect(() => {
     void fetchPayments();
@@ -79,6 +83,41 @@ function PaymentsPage() {
     }
   };
 
+  const formatCsvCell = (value: string | number | null | undefined) => {
+    const text = String(value ?? "");
+    return `"${text.replace(/"/g, '""')}"`;
+  };
+
+  const handleExportCsv = () => {
+    if (payments.length === 0) {
+      toast.info("Não há pagamentos para exportar.");
+      return;
+    }
+
+    const rows = [
+      ["Transação", "Cliente", "E-mail", "Valor", "Status", "Método", "Data"],
+      ...payments.map((payment) => [
+        payment.id,
+        payment.customers?.name ?? "",
+        payment.customers?.email ?? "",
+        Number(payment.amount).toFixed(2).replace(".", ","),
+        getStatusLabel(payment.status),
+        payment.payment_method || "Cartão",
+        new Date(payment.created_at).toLocaleString("pt-BR"),
+      ]),
+    ];
+
+    const csv = rows.map((row) => row.map(formatCsvCell).join(";")).join("\n");
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "precifika-pagamentos.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success("CSV exportado com sucesso.");
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -86,7 +125,12 @@ function PaymentsPage() {
           <h2 className="text-2xl font-bold text-slate-900">Pagamentos</h2>
           <p className="text-slate-500 text-sm">Histórico financeiro e transações.</p>
         </div>
-        <Button variant="outline" className="gap-2">
+        <Button
+          variant="outline"
+          className="gap-2"
+          onClick={handleExportCsv}
+          disabled={loading || payments.length === 0}
+        >
           <Download className="h-4 w-4" />
           Exportar CSV
         </Button>
@@ -153,7 +197,7 @@ function PaymentsPage() {
                       {p.payment_method || "Cartão"}
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-500">
-                      {new Date(p.created_at).toLocaleString()}
+                      {new Date(p.created_at).toLocaleString("pt-BR")}
                     </td>
                   </tr>
                 ))
