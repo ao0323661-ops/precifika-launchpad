@@ -7,6 +7,11 @@ export default defineConfig({
     },
   },
   ssr: {
-    noExternal: ["h3"],
+    noExternal: true,
+    resolve: {
+      alias: {
+        "h3-v2": "h3",
+      },
+    },
   },
 });
