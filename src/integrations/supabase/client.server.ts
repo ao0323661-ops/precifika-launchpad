@@ -14,9 +14,7 @@ function createSupabaseAdminClient(): SupabaseClient<Database> {
     // Return a proxy that throws on any access
     return new Proxy({} as SupabaseClient<Database>, {
       get() {
-        throw new Error(
-          "Supabase Admin client accessed but environment variables are missing.",
-        );
+        throw new Error("Supabase Admin client accessed but environment variables are missing.");
       },
     });
   }
