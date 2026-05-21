@@ -13,7 +13,7 @@ export type Database = {
           created_at: string;
           email: string;
           external_customer_id: string | null;
-          gateway_provider: string;
+          gateway_provider: string | null;
           id: string;
           name: string;
           phone: string | null;
@@ -25,7 +25,7 @@ export type Database = {
           created_at?: string;
           email: string;
           external_customer_id?: string | null;
-          gateway_provider?: string;
+          gateway_provider?: string | null;
           id?: string;
           name: string;
           phone?: string | null;
@@ -37,7 +37,7 @@ export type Database = {
           created_at?: string;
           email?: string;
           external_customer_id?: string | null;
-          gateway_provider?: string;
+          gateway_provider?: string | null;
           id?: string;
           name?: string;
           phone?: string | null;
@@ -53,7 +53,7 @@ export type Database = {
           created_at: string;
           customer_id: string;
           external_payment_id: string | null;
-          gateway_provider: string;
+          gateway_provider: string | null;
           id: string;
           paid_at: string | null;
           payment_method: string | null;
@@ -66,7 +66,7 @@ export type Database = {
           created_at?: string;
           customer_id: string;
           external_payment_id?: string | null;
-          gateway_provider?: string;
+          gateway_provider?: string | null;
           id?: string;
           paid_at?: string | null;
           payment_method?: string | null;
@@ -79,7 +79,7 @@ export type Database = {
           created_at?: string;
           customer_id?: string;
           external_payment_id?: string | null;
-          gateway_provider?: string;
+          gateway_provider?: string | null;
           id?: string;
           paid_at?: string | null;
           payment_method?: string | null;
@@ -166,7 +166,7 @@ export type Database = {
           created_at: string | null;
           expires_at: string;
           external_subscription_id: string | null;
-          gateway_provider: string;
+          gateway_provider: string | null;
           id: string;
           plan_name: string;
           started_at: string | null;
@@ -178,7 +178,7 @@ export type Database = {
           created_at?: string | null;
           expires_at: string;
           external_subscription_id?: string | null;
-          gateway_provider?: string;
+          gateway_provider?: string | null;
           id?: string;
           plan_name: string;
           started_at?: string | null;
@@ -190,7 +190,7 @@ export type Database = {
           created_at?: string | null;
           expires_at?: string;
           external_subscription_id?: string | null;
-          gateway_provider?: string;
+          gateway_provider?: string | null;
           id?: string;
           plan_name?: string;
           started_at?: string | null;
@@ -203,13 +203,13 @@ export type Database = {
       subscriptions: {
         Row: {
           amount: number;
-          cancel_at_period_end: boolean;
+          cancel_at_period_end: boolean | null;
           created_at: string;
           current_period_end: string;
           current_period_start: string;
           customer_id: string;
           external_subscription_id: string | null;
-          gateway_provider: string;
+          gateway_provider: string | null;
           id: string;
           plan_name: string;
           status: string;
@@ -217,14 +217,14 @@ export type Database = {
           user_id: string;
         };
         Insert: {
-          amount?: number;
-          cancel_at_period_end?: boolean;
+          amount: number;
+          cancel_at_period_end?: boolean | null;
           created_at?: string;
           current_period_end: string;
           current_period_start?: string;
           customer_id: string;
           external_subscription_id?: string | null;
-          gateway_provider?: string;
+          gateway_provider?: string | null;
           id?: string;
           plan_name: string;
           status?: string;
@@ -233,13 +233,13 @@ export type Database = {
         };
         Update: {
           amount?: number;
-          cancel_at_period_end?: boolean;
+          cancel_at_period_end?: boolean | null;
           created_at?: string;
           current_period_end?: string;
           current_period_start?: string;
           customer_id?: string;
           external_subscription_id?: string | null;
-          gateway_provider?: string;
+          gateway_provider?: string | null;
           id?: string;
           plan_name?: string;
           status?: string;
@@ -259,13 +259,11 @@ export type Database = {
       webhook_logs: {
         Row: {
           created_at: string | null;
-          duplicate_count: number;
           error_message: string | null;
-          event_id: string;
+          event_id: string | null;
           event_type: string;
           gateway_provider: string;
           id: string;
-          last_duplicate_at: string | null;
           payload: Json;
           processed_at: string | null;
           status: string | null;
@@ -273,27 +271,23 @@ export type Database = {
         };
         Insert: {
           created_at?: string | null;
-          duplicate_count?: number;
           error_message?: string | null;
-          event_id: string;
+          event_id?: string | null;
           event_type: string;
-          gateway_provider?: string;
+          gateway_provider: string;
           id?: string;
-          last_duplicate_at?: string | null;
-          payload?: Json;
+          payload: Json;
           processed_at?: string | null;
           status?: string | null;
           user_id?: string | null;
         };
         Update: {
           created_at?: string | null;
-          duplicate_count?: number;
           error_message?: string | null;
-          event_id?: string;
+          event_id?: string | null;
           event_type?: string;
           gateway_provider?: string;
           id?: string;
-          last_duplicate_at?: string | null;
           payload?: Json;
           processed_at?: string | null;
           status?: string | null;
