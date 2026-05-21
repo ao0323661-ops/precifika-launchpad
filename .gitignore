@@ -12,6 +12,7 @@ dist
 dist-ssr
 .output
 .vinxi
+.env
 .tanstack/**
 .nitro
 *.local
@@ -30,3 +31,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+/src/generated/prisma
