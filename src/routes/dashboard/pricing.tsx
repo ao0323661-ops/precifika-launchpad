@@ -65,6 +65,31 @@ const PLANS = [
   },
 ];
 
+type CheckoutResponse = {
+  url?: string;
+  error?: string;
+};
+
+async function getCheckoutErrorMessage(error: unknown) {
+  const fallback = "Não foi possível iniciar o checkout. Tente novamente em instantes.";
+
+  if (
+    error &&
+    typeof error === "object" &&
+    "context" in error &&
+    error.context instanceof Response
+  ) {
+    try {
+      const body = (await error.context.clone().json()) as CheckoutResponse;
+      return body.error || fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  return fallback;
+}
+
 function PricingPage() {
   const { isDemo } = dashboardRoute.useRouteContext();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
@@ -85,11 +110,13 @@ function PricingPage() {
       if (data?.url) {
         window.location.href = data.url;
       } else {
-        toast.error("Não recebemos o link de pagamento. Tente novamente em instantes.");
+        toast.error(
+          data?.error || "Não recebemos o link de pagamento. Tente novamente em instantes.",
+        );
       }
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao iniciar checkout. Tente novamente.");
+      toast.error(await getCheckoutErrorMessage(err));
     } finally {
       setLoadingPlan(null);
     }
