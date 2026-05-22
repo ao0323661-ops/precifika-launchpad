@@ -1,26 +1,28 @@
-import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
+import { componentTagger } from "lovable-tagger";
+import tsconfigPaths from "vite-tsconfig-paths";
 
-const ssrBundledDependencies = ["h3", "h3-v2", "rou3", "srvx"];
-const ssrExternalDependencies = [
-  "react",
-  "react-dom",
-  "react-dom/client",
-  "react-dom/server",
-  "react/jsx-dev-runtime",
-  "react/jsx-runtime",
-  "scheduler",
-];
-
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    tanstackRouter({
+      target: "react",
+      autoCodeSplitting: true,
+    }),
+    react(),
+    tailwindcss(),
+    tsconfigPaths({ projects: ["./tsconfig.json"] }),
+    mode === "development" && componentTagger(),
+  ].filter(Boolean),
   resolve: {
     alias: {
-      "h3-v2": "h3",
+      "@": "/src",
     },
-    noExternal: ssrBundledDependencies,
-    external: ssrExternalDependencies,
   },
-  ssr: {
-    noExternal: ssrBundledDependencies,
-    external: ssrExternalDependencies,
+  server: {
+    host: "::",
+    port: 8080,
   },
-});
+}));
