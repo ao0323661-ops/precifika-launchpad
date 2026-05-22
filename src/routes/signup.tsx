@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { toHashRoute } from "@/lib/hash-routes";
 
 export const Route = createFileRoute("/signup")({
   component: Signup,
@@ -46,7 +47,7 @@ function Signup() {
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}${toHashRoute("/dashboard")}`,
         },
       });
 
@@ -155,7 +156,7 @@ function Signup() {
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Já tem uma conta?{" "}
-            <a href="/login" className="font-medium text-primary hover:underline">
+            <a href={toHashRoute("/login")} className="font-medium text-primary hover:underline">
               Entrar
             </a>
           </p>

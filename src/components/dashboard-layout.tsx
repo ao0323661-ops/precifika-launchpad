@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { DEMO_BADGE_LABEL, DEMO_USER } from "@/lib/demo-config";
+import { toHashRoute } from "@/lib/hash-routes";
 
 interface SidebarProps {
   children: ReactNode;
@@ -60,7 +61,7 @@ export function DashboardLayout({ children, isDemo }: SidebarProps) {
           {menuItems.map((item) => (
             <a
               key={item.label}
-              href={withDemoSearch(item.href)}
+              href={toHashRoute(withDemoSearch(item.href))}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 currentPath === item.href
@@ -118,7 +119,7 @@ export function DashboardLayout({ children, isDemo }: SidebarProps) {
           {menuItems.map((item) => (
             <a
               key={item.label}
-              href={withDemoSearch(item.href)}
+              href={toHashRoute(withDemoSearch(item.href))}
               onClick={() => setIsMobileMenuOpen(false)}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",

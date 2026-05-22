@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { toHashRoute } from "@/lib/hash-routes";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -45,7 +46,7 @@ function Landing() {
     try {
       await new Promise((resolve) => window.setTimeout(resolve, 250));
       toast.success("Ambiente de demonstração carregado com dados fictícios.");
-      window.location.assign("/dashboard?demo=1");
+      window.location.assign(toHashRoute("/dashboard?demo=1"));
     } catch {
       toast.error("Não foi possível abrir a demonstração agora. Tente novamente em instantes.");
     } finally {
@@ -68,9 +69,14 @@ function Landing() {
 
 function Header({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => void }) {
   const links = [
-    { label: "Benefícios", href: "#beneficios" },
-    { label: "Planos", href: "#planos" },
+    { label: "Benefícios", sectionId: "beneficios" },
+    { label: "Planos", sectionId: "planos" },
   ];
+  const scrollToSection = (sectionId: string) => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setOpen(false);
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -82,18 +88,19 @@ function Header({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => voi
         </a>
         <nav className="hidden items-center gap-8 md:flex">
           {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
+            <button
+              key={l.sectionId}
+              type="button"
+              onClick={() => scrollToSection(l.sectionId)}
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               {l.label}
-            </a>
+            </button>
           ))}
         </nav>
         <div className="hidden items-center gap-2 md:flex">
           <Button variant="ghost" size="sm" asChild>
-            <a href="/login">Entrar</a>
+            <a href={toHashRoute("/login")}>Entrar</a>
           </Button>
         </div>
         <button className="md:hidden" aria-label="Menu" onClick={() => setOpen(!open)}>
@@ -104,18 +111,18 @@ function Header({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => voi
         <div className="border-t border-border/60 bg-background md:hidden">
           <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4">
             {links.map((l) => (
-              <a
-                key={l.href}
-                href={l.href}
+              <button
+                key={l.sectionId}
+                type="button"
                 className="text-sm text-muted-foreground"
-                onClick={() => setOpen(false)}
+                onClick={() => scrollToSection(l.sectionId)}
               >
                 {l.label}
-              </a>
+              </button>
             ))}
             <div className="flex flex-col gap-2 pt-2">
               <Button variant="outline" size="sm" asChild>
-                <a href="/login">Entrar</a>
+                <a href={toHashRoute("/login")}>Entrar</a>
               </Button>
             </div>
           </div>
@@ -154,7 +161,7 @@ function Hero({ demoLoading, onDemoAccess }: { demoLoading: boolean; onDemoAcces
               className="w-full bg-gradient-to-r from-primary to-primary-glow shadow-lg shadow-primary/30 hover:opacity-90 sm:w-auto"
               asChild
             >
-              <a href="/signup">Começar teste grátis</a>
+              <a href={toHashRoute("/signup")}>Começar teste grátis</a>
             </Button>
             <Button
               size="lg"
@@ -319,7 +326,7 @@ function Plans() {
                 variant={p.highlight ? "default" : "outline"}
                 asChild
               >
-                <a href="/signup">{p.cta}</a>
+                <a href={toHashRoute("/signup")}>{p.cta}</a>
               </Button>
               <ul className="mt-8 space-y-3">
                 {p.features.map((f) => (

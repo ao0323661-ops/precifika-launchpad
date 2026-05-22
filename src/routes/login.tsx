@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowRight, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { toHashRoute } from "@/lib/hash-routes";
 
 export const Route = createFileRoute("/login")({
   component: Login,
@@ -59,7 +60,7 @@ function Login() {
     try {
       await new Promise((resolve) => window.setTimeout(resolve, 250));
       toast.success("Ambiente de demonstração carregado com dados fictícios.");
-      window.location.assign("/dashboard?demo=1");
+      window.location.assign(toHashRoute("/dashboard?demo=1"));
     } catch {
       toast.error("Não foi possível acessar a demonstração agora. Verifique sua conexão.");
     } finally {
@@ -156,7 +157,7 @@ function Login() {
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Não tem conta?{" "}
-            <a href="/signup" className="font-medium text-primary hover:underline">
+            <a href={toHashRoute("/signup")} className="font-medium text-primary hover:underline">
               Começar teste grátis
             </a>
           </p>
