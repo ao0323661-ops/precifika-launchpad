@@ -1,4 +1,4 @@
-import { createFileRoute, getRouteApi } from "@tanstack/react-router";
+import { createFileRoute, getRouteApi, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Check, Sparkles, ArrowRight, ShieldCheck, Zap, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -68,10 +68,27 @@ const PLANS = [
 type CheckoutResponse = {
   url?: string;
   error?: string;
+  code?: string;
 };
+
+const SESSION_EXPIRED_MESSAGE =
+  "Sua sessão expirou. Entre novamente para continuar com a assinatura.";
+const SESSION_EXPIRY_SKEW_SECONDS = 60;
+
+function isCheckoutUnauthorized(error: unknown): boolean {
+  if (!error || typeof error !== "object" || !("context" in error)) {
+    return false;
+  }
+
+  return error.context instanceof Response && error.context.status === 401;
+}
 
 async function getCheckoutErrorMessage(error: unknown) {
   const fallback = "Não foi possível iniciar o checkout. Tente novamente em instantes.";
+
+  if (isCheckoutUnauthorized(error)) {
+    return SESSION_EXPIRED_MESSAGE;
+  }
 
   if (
     error &&
@@ -81,17 +98,61 @@ async function getCheckoutErrorMessage(error: unknown) {
   ) {
     try {
       const body = (await error.context.clone().json()) as CheckoutResponse;
+      if (body.code === "MISSING_SESSION" || body.code === "INVALID_SESSION") {
+        return SESSION_EXPIRED_MESSAGE;
+      }
+
       return body.error || fallback;
     } catch {
       return fallback;
     }
   }
 
+  if (error instanceof Error && /jwt|sess[aã]o|session|auth/i.test(error.message)) {
+    return SESSION_EXPIRED_MESSAGE;
+  }
+
   return fallback;
+}
+
+async function getCheckoutAccessToken() {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error) {
+    console.error("Erro ao recuperar sessão antes do checkout:", error);
+    return null;
+  }
+
+  let activeSession = session;
+  const expiresAt = activeSession?.expires_at ?? 0;
+  const shouldRefresh =
+    activeSession?.refresh_token &&
+    expiresAt > 0 &&
+    expiresAt <= Math.floor(Date.now() / 1000) + SESSION_EXPIRY_SKEW_SECONDS;
+
+  if (shouldRefresh) {
+    const {
+      data: { session: refreshedSession },
+      error: refreshError,
+    } = await supabase.auth.refreshSession();
+
+    if (refreshError) {
+      console.error("Erro ao renovar sessão antes do checkout:", refreshError);
+      return null;
+    }
+
+    activeSession = refreshedSession;
+  }
+
+  return activeSession?.access_token ?? null;
 }
 
 function PricingPage() {
   const { isDemo } = dashboardRoute.useRouteContext();
+  const navigate = useNavigate();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
   async function handleSubscribe(planId: string) {
@@ -102,8 +163,19 @@ function PricingPage() {
 
     setLoadingPlan(planId);
     try {
+      const accessToken = await getCheckoutAccessToken();
+
+      if (!accessToken) {
+        toast.error(SESSION_EXPIRED_MESSAGE);
+        await navigate({ to: "/login" });
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke("create-subscription-checkout", {
         body: { planId },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
 
       if (error) throw error;
@@ -117,6 +189,9 @@ function PricingPage() {
     } catch (err) {
       console.error(err);
       toast.error(await getCheckoutErrorMessage(err));
+      if (isCheckoutUnauthorized(err)) {
+        await navigate({ to: "/login" });
+      }
     } finally {
       setLoadingPlan(null);
     }
