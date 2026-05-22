@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { toHashRoute } from "@/lib/hash-routes";
+import { toPublicHashRoute } from "@/lib/public-app-url";
 
 export const Route = createFileRoute("/signup")({
   component: Signup,
@@ -47,7 +48,7 @@ function Signup() {
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}${toHashRoute("/dashboard")}`,
+          emailRedirectTo: toPublicHashRoute("/dashboard"),
         },
       });
 
