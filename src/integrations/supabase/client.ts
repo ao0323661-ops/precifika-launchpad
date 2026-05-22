@@ -1,15 +1,17 @@
 import type { Database } from "./types";
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "http://localhost:54321";
-const supabaseAnonKey =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "missing-supabase-publishable-key";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-if (
-  supabaseUrl === "http://localhost:54321" ||
-  supabaseAnonKey === "missing-supabase-publishable-key"
-) {
-  console.warn("Supabase credentials missing. Some features may not work.");
+if (!supabaseUrl || !supabasePublishableKey) {
+  throw new Error("Configuracao publica do Supabase ausente no build do frontend.");
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient<Database>(supabaseUrl, supabasePublishableKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
