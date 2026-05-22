@@ -1,5 +1,3 @@
-import { toHashRoute } from "@/lib/hash-routes";
-
 const DEFAULT_PUBLIC_APP_URL = "https://precifika-launchpad.lovable.app";
 const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
 
@@ -22,6 +20,8 @@ function normalizePublicAppUrl(value?: string) {
 
 export const PUBLIC_APP_URL = normalizePublicAppUrl(import.meta.env.VITE_PUBLIC_APP_URL);
 
-export function toPublicHashRoute(path: string) {
-  return `${PUBLIC_APP_URL}${toHashRoute(path)}`;
+export function toPublicAuthRedirectRoute(path: string) {
+  const url = new URL(PUBLIC_APP_URL);
+  url.searchParams.set("auth_redirect", path);
+  return url.toString();
 }

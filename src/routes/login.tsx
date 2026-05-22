@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { ArrowRight, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { toHashRoute } from "@/lib/hash-routes";
+import { getPostAuthRedirect, withPostAuthRedirect } from "@/lib/post-auth-redirect";
 
 export const Route = createFileRoute("/login")({
   component: Login,
@@ -17,6 +18,8 @@ function Login() {
   const [password, setPassword] = useState("");
   const [loadingAction, setLoadingAction] = useState<"login" | "demo" | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const postAuthRedirect = getPostAuthRedirect(location.searchStr);
   const loading = loadingAction !== null;
 
   const getLoginErrorMessage = (message?: string) => {
@@ -38,15 +41,33 @@ function Login() {
     if (loading) return;
     setLoadingAction("login");
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
       if (error) {
         toast.error(getLoginErrorMessage(error.message));
+      } else if (!data.session) {
+        toast.error("Não foi possível validar sua sessão. Entre novamente para continuar.");
       } else {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          });
+
+          if (sessionError) {
+            toast.error("Não foi possível salvar sua sessão. Tente entrar novamente.");
+            return;
+          }
+        }
+
         toast.success("Login realizado com sucesso.");
-        await navigate({ to: "/dashboard" });
+        await navigate({ to: postAuthRedirect });
       }
     } catch {
       toast.error("Não foi possível entrar agora. Verifique sua conexão e tente novamente.");
@@ -157,7 +178,10 @@ function Login() {
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Não tem conta?{" "}
-            <a href={toHashRoute("/signup")} className="font-medium text-primary hover:underline">
+            <a
+              href={toHashRoute(withPostAuthRedirect("/signup", postAuthRedirect))}
+              className="font-medium text-primary hover:underline"
+            >
               Começar teste grátis
             </a>
           </p>

@@ -44,7 +44,11 @@ export const Route = createFileRoute("/dashboard")({
     } = await supabase.auth.getSession();
 
     if (!session) {
-      throw redirect({ to: "/login" });
+      throw redirect({
+        to: "/login",
+        search:
+          location.pathname === "/dashboard/pricing" ? { redirect: "/dashboard/pricing" } : {},
+      });
     }
 
     if (isDemoUser(session.user.email)) {

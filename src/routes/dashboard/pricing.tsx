@@ -1,9 +1,11 @@
-import { createFileRoute, getRouteApi, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, getRouteApi } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Check, Sparkles, ArrowRight, ShieldCheck, Zap, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { toast } from "sonner";
+import { toHashRoute } from "@/lib/hash-routes";
+import { withPostAuthRedirect } from "@/lib/post-auth-redirect";
 
 export const Route = createFileRoute("/dashboard/pricing")({
   component: PricingPage,
@@ -150,9 +152,12 @@ async function getCheckoutAccessToken() {
   return activeSession?.access_token ?? null;
 }
 
+function redirectToLoginForCheckout() {
+  window.location.assign(toHashRoute(withPostAuthRedirect("/login", "/dashboard/pricing")));
+}
+
 function PricingPage() {
   const { isDemo } = dashboardRoute.useRouteContext();
-  const navigate = useNavigate();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
   async function handleSubscribe(planId: string) {
@@ -167,7 +172,7 @@ function PricingPage() {
 
       if (!accessToken) {
         toast.error(SESSION_EXPIRED_MESSAGE);
-        await navigate({ to: "/login" });
+        redirectToLoginForCheckout();
         return;
       }
 
@@ -190,7 +195,7 @@ function PricingPage() {
       console.error(err);
       toast.error(await getCheckoutErrorMessage(err));
       if (isCheckoutUnauthorized(err)) {
-        await navigate({ to: "/login" });
+        redirectToLoginForCheckout();
       }
     } finally {
       setLoadingPlan(null);

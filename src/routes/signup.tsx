@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { toHashRoute } from "@/lib/hash-routes";
-import { toPublicHashRoute } from "@/lib/public-app-url";
+import { toPublicAuthRedirectRoute } from "@/lib/public-app-url";
+import { getPostAuthRedirect, withPostAuthRedirect } from "@/lib/post-auth-redirect";
 
 export const Route = createFileRoute("/signup")({
   component: Signup,
@@ -18,6 +19,8 @@ function Signup() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const postAuthRedirect = getPostAuthRedirect(location.searchStr);
 
   const getSignupErrorMessage = (message?: string) => {
     const normalized = message?.toLowerCase() ?? "";
@@ -44,19 +47,38 @@ function Signup() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: toPublicHashRoute("/dashboard"),
+          emailRedirectTo: toPublicAuthRedirectRoute(postAuthRedirect),
         },
       });
 
       if (error) {
         toast.error(getSignupErrorMessage(error.message));
+      } else if (data.session) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          });
+
+          if (sessionError) {
+            toast.error("Conta criada, mas não foi possível salvar sua sessão. Entre novamente.");
+            return;
+          }
+        }
+
+        toast.success("Conta criada com sucesso.");
+        await navigate({ to: postAuthRedirect });
       } else {
         toast.success("Conta criada. Verifique seu e-mail para confirmar o acesso.");
-        await navigate({ to: "/login" });
+        await navigate({ to: "/login", search: { redirect: postAuthRedirect } });
       }
     } catch {
       toast.error("Não foi possível criar sua conta agora. Verifique sua conexão.");
@@ -157,7 +179,10 @@ function Signup() {
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Já tem uma conta?{" "}
-            <a href={toHashRoute("/login")} className="font-medium text-primary hover:underline">
+            <a
+              href={toHashRoute(withPostAuthRedirect("/login", postAuthRedirect))}
+              className="font-medium text-primary hover:underline"
+            >
               Entrar
             </a>
           </p>
