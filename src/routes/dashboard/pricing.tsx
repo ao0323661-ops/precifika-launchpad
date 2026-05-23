@@ -75,46 +75,76 @@ type CheckoutResponse = {
 
 const SESSION_EXPIRED_MESSAGE =
   "Sua sessão expirou. Entre novamente para continuar com a assinatura.";
+const ABACATEPAY_CHECKOUT_MESSAGE =
+  "Não foi possível abrir o checkout. Verifique a configuração de pagamento.";
 const SESSION_EXPIRY_SKEW_SECONDS = 60;
+const CHECKOUT_AUTH_ERROR_CODES = new Set([
+  "MISSING_SESSION",
+  "INVALID_SESSION",
+  "UNAUTHORIZED_NO_AUTH_HEADER",
+]);
 
-function isCheckoutUnauthorized(error: unknown): boolean {
+type NormalizedCheckoutError = {
+  message: string;
+  shouldRedirectToLogin: boolean;
+  code?: string;
+};
+
+function getCheckoutErrorResponse(error: unknown): Response | null {
   if (!error || typeof error !== "object" || !("context" in error)) {
-    return false;
+    return null;
   }
 
-  return error.context instanceof Response && error.context.status === 401;
+  return error.context instanceof Response ? error.context : null;
 }
 
-async function getCheckoutErrorMessage(error: unknown) {
+async function readCheckoutErrorBody(error: unknown): Promise<CheckoutResponse | null> {
+  const response = getCheckoutErrorResponse(error);
+  if (!response) {
+    return null;
+  }
+
+  try {
+    return (await response.clone().json()) as CheckoutResponse;
+  } catch {
+    return null;
+  }
+}
+
+function isCheckoutAuthCode(code?: string): boolean {
+  return Boolean(code && CHECKOUT_AUTH_ERROR_CODES.has(code));
+}
+
+function isAbacatePayCode(code?: string): boolean {
+  return Boolean(code?.startsWith("ABACATEPAY_"));
+}
+
+async function normalizeCheckoutError(error: unknown): Promise<NormalizedCheckoutError> {
   const fallback = "Não foi possível iniciar o checkout. Tente novamente em instantes.";
+  const body = await readCheckoutErrorBody(error);
+  const code = typeof body?.code === "string" ? body.code : undefined;
 
-  if (isCheckoutUnauthorized(error)) {
-    return SESSION_EXPIRED_MESSAGE;
+  if (isCheckoutAuthCode(code)) {
+    return {
+      message: SESSION_EXPIRED_MESSAGE,
+      shouldRedirectToLogin: true,
+      code,
+    };
   }
 
-  if (
-    error &&
-    typeof error === "object" &&
-    "context" in error &&
-    error.context instanceof Response
-  ) {
-    try {
-      const body = (await error.context.clone().json()) as CheckoutResponse;
-      if (body.code === "MISSING_SESSION" || body.code === "INVALID_SESSION") {
-        return SESSION_EXPIRED_MESSAGE;
-      }
-
-      return body.error || fallback;
-    } catch {
-      return fallback;
-    }
+  if (isAbacatePayCode(code)) {
+    return {
+      message: ABACATEPAY_CHECKOUT_MESSAGE,
+      shouldRedirectToLogin: false,
+      code,
+    };
   }
 
-  if (error instanceof Error && /jwt|sess[aã]o|session|auth/i.test(error.message)) {
-    return SESSION_EXPIRED_MESSAGE;
-  }
-
-  return fallback;
+  return {
+    message: body?.error || fallback,
+    shouldRedirectToLogin: false,
+    code,
+  };
 }
 
 async function getCheckoutAccessToken() {
@@ -193,8 +223,9 @@ function PricingPage() {
       }
     } catch (err) {
       console.error(err);
-      toast.error(await getCheckoutErrorMessage(err));
-      if (isCheckoutUnauthorized(err)) {
+      const checkoutError = await normalizeCheckoutError(err);
+      toast.error(checkoutError.message);
+      if (checkoutError.shouldRedirectToLogin) {
         redirectToLoginForCheckout();
       }
     } finally {

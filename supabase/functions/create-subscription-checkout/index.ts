@@ -29,6 +29,11 @@ type AbacatePayResponse<T> = {
   success?: boolean;
 };
 
+type AbacatePayErrorCode =
+  | "ABACATEPAY_AUTH_ERROR"
+  | "ABACATEPAY_PAYLOAD_ERROR"
+  | "ABACATEPAY_UNAVAILABLE";
+
 type AbacatePayProduct = {
   id?: string;
   externalId?: string;
@@ -137,6 +142,38 @@ function parsePlanId(value: unknown): PlanId {
   throw new CheckoutError("Selecione um plano valido para continuar.", 400, "INVALID_PLAN");
 }
 
+function parseAbacatePayResponse<T>(body: string): AbacatePayResponse<T> {
+  if (!body) return {};
+
+  try {
+    return JSON.parse(body) as AbacatePayResponse<T>;
+  } catch {
+    return { error: "INVALID_JSON_RESPONSE" };
+  }
+}
+
+function classifyAbacatePayError(status: number): { status: number; code: AbacatePayErrorCode } {
+  if (status >= 200 && status < 300) {
+    return { status: 502, code: "ABACATEPAY_PAYLOAD_ERROR" };
+  }
+
+  if (status === 401 || status === 403) {
+    return { status: 502, code: "ABACATEPAY_AUTH_ERROR" };
+  }
+
+  if (status === 400 || status === 404 || status === 409 || status === 422) {
+    return { status: 502, code: "ABACATEPAY_PAYLOAD_ERROR" };
+  }
+
+  return { status: 503, code: "ABACATEPAY_UNAVAILABLE" };
+}
+
+function previewAbacatePayBody(body: string): string | null {
+  if (!body) return null;
+  const preview = body.slice(0, 700);
+  return ABACATEPAY_API_KEY ? preview.replaceAll(ABACATEPAY_API_KEY, "[REDACTED]") : preview;
+}
+
 async function callAbacatePay<T>(path: string, init: RequestInit): Promise<T> {
   if (!ABACATEPAY_API_KEY) {
     throw new CheckoutError(
@@ -146,27 +183,51 @@ async function callAbacatePay<T>(path: string, init: RequestInit): Promise<T> {
     );
   }
 
-  const response = await fetch(`${ABACATEPAY_API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${ABACATEPAY_API_KEY}`,
-      ...(init.headers ?? {}),
-    },
-  });
-
-  const result = (await response.json().catch(() => ({}))) as AbacatePayResponse<T>;
-
-  if (!response.ok || result.success === false || result.error) {
-    console.error("AbacatePay checkout error:", {
-      status: response.status,
-      path,
-      error: result.error,
+  let response: Response;
+  try {
+    response = await fetch(`${ABACATEPAY_API_BASE_URL}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${ABACATEPAY_API_KEY}`,
+        ...(init.headers ?? {}),
+      },
     });
+  } catch (error) {
+    console.error("AbacatePay checkout network error:", {
+      path,
+      method: init.method ?? "GET",
+      error: error instanceof Error ? error.message : String(error),
+    });
+
     throw new CheckoutError(
       "Nao foi possivel abrir o checkout. Tente novamente em instantes.",
-      response.status >= 400 ? response.status : 502,
-      "ABACATEPAY_ERROR",
+      503,
+      "ABACATEPAY_UNAVAILABLE",
+    );
+  }
+
+  const responseBody = await response.text().catch(() => "");
+  const result = parseAbacatePayResponse<T>(responseBody);
+
+  if (!response.ok || result.success === false || result.error) {
+    const mappedError = classifyAbacatePayError(response.status);
+    console.error("AbacatePay checkout error:", {
+      status: response.status,
+      mappedStatus: mappedError.status,
+      code: mappedError.code,
+      path,
+      method: init.method ?? "GET",
+      error: result.error,
+      success: result.success,
+      responseKeys: Object.keys(result).slice(0, 8),
+      bodyPreview: previewAbacatePayBody(responseBody),
+    });
+
+    throw new CheckoutError(
+      "Nao foi possivel abrir o checkout. Tente novamente em instantes.",
+      mappedError.status,
+      mappedError.code,
     );
   }
 
