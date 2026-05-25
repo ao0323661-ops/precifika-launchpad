@@ -20,6 +20,13 @@ function normalizePublicAppUrl(value?: string) {
 
 export const PUBLIC_APP_URL = normalizePublicAppUrl(import.meta.env.VITE_PUBLIC_APP_URL);
 
+export function toPublicHashRoute(path: string) {
+  const url = new URL(PUBLIC_APP_URL);
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  url.hash = normalizedPath;
+  return url.toString();
+}
+
 export function toPublicAuthRedirectRoute(path: string) {
   const url = new URL(PUBLIC_APP_URL);
   url.searchParams.set("auth_redirect", path);

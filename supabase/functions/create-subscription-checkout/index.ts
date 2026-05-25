@@ -120,6 +120,13 @@ function getAppOrigin(req: Request): string {
   );
 }
 
+function toAppHashRouteUrl(appOrigin: string, path: string): string {
+  const url = new URL(appOrigin);
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  url.hash = normalizedPath;
+  return url.toString();
+}
+
 function validateEnvironment() {
   const missing = [
     !ABACATEPAY_API_KEY ? "ABACATEPAY_API_KEY" : null,
@@ -334,8 +341,8 @@ serve(async (req) => {
       body: JSON.stringify({
         items: [{ id: productId, quantity: 1 }],
         methods: ["CARD"],
-        returnUrl: `${appOrigin}/dashboard/pricing`,
-        completionUrl: `${appOrigin}/dashboard?success=true`,
+        returnUrl: toAppHashRouteUrl(appOrigin, "/dashboard/pricing"),
+        completionUrl: toAppHashRouteUrl(appOrigin, "/dashboard?success=true"),
         externalId: `${user.id}:${planId}:${Date.now()}`,
         metadata: {
           userId: user.id,
