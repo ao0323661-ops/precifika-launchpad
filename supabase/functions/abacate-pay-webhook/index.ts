@@ -3,10 +3,11 @@ import { encode as encodeBase64 } from "https://deno.land/std@0.177.0/encoding/b
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const GATEWAY_PROVIDER = "abacatepay";
-const SIGNATURE_HEADERS = ["X-Webhook-Signature", "X-Abacate-Signature"];
+const SIGNATURE_HEADER = "X-Webhook-Signature";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-const WEBHOOK_HMAC_SECRET = Deno.env.get("ABACATEPAY_WEBHOOK_SECRET");
+const WEBHOOK_QUERY_SECRET = Deno.env.get("ABACATEPAY_WEBHOOK_SECRET");
+const ABACATEPAY_PUBLIC_KEY = Deno.env.get("ABACATEPAY_PUBLIC_KEY");
 
 const supabase =
   SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
@@ -18,7 +19,9 @@ type WebhookPayload = {
   event?: unknown;
   data?: {
     checkout?: Record<string, unknown>;
-    customer?: Record<string, unknown>;
+    customer?: Record<string, unknown> | null;
+    payment?: Record<string, unknown>;
+    payerInformation?: Record<string, unknown>;
     subscription?: Record<string, unknown>;
   };
 };
@@ -60,12 +63,20 @@ function getFirstString(value: unknown): string | undefined {
 }
 
 function getSignature(req: Request): string | undefined {
-  for (const header of SIGNATURE_HEADERS) {
-    const signature = req.headers.get(header);
-    if (signature) return signature;
-  }
+  return getString(req.headers.get(SIGNATURE_HEADER));
+}
 
-  return undefined;
+function getWebhookSecret(req: Request): string | undefined {
+  return getString(new URL(req.url).searchParams.get("webhookSecret"));
+}
+
+function logWebhookAuthContext(req: Request, reason: string) {
+  console.warn("Abacate Pay webhook auth check failed:", {
+    reason,
+    headerNames: Array.from(req.headers.keys()).sort(),
+    hasSignatureHeader: req.headers.has(SIGNATURE_HEADER),
+    hasWebhookSecretParam: new URL(req.url).searchParams.has("webhookSecret"),
+  });
 }
 
 function oneMonthFromNow(): string {
@@ -75,14 +86,7 @@ function oneMonthFromNow(): string {
 }
 
 function normalizeSignature(signature: string): string {
-  const trimmed = signature.trim();
-  return trimmed.toLowerCase().startsWith("sha256=") ? trimmed.slice(7) : trimmed;
-}
-
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes)
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+  return signature.trim();
 }
 
 function timingSafeEqual(a: string, b: string): boolean {
@@ -102,47 +106,115 @@ function timingSafeEqual(a: string, b: string): boolean {
 async function verifySignature(
   rawBody: string,
   signature: string,
-  secret: string,
+  publicKey: string,
 ): Promise<boolean> {
   const key = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(secret),
+    new TextEncoder().encode(publicKey),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
   );
 
-  const signatureBytes = new Uint8Array(
-    await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody)),
-  );
+  const signatureBuffer = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody));
   const received = normalizeSignature(signature);
-  const expectedBase64 = encodeBase64(signatureBytes);
-  const expectedHex = bytesToHex(signatureBytes);
+  const expectedBase64 = encodeBase64(signatureBuffer);
 
-  return timingSafeEqual(received, expectedBase64) || timingSafeEqual(received, expectedHex);
+  return timingSafeEqual(received, expectedBase64);
+}
+
+function verifyWebhookSecret(req: Request): boolean {
+  if (!WEBHOOK_QUERY_SECRET) return false;
+
+  const received = getWebhookSecret(req);
+  return Boolean(received && timingSafeEqual(received, WEBHOOK_QUERY_SECRET));
 }
 
 function getUserId(payloadData: WebhookPayload["data"]): string | undefined {
-  return (
-    getNestedString(payloadData?.checkout, ["metadata", "userId"]) ||
-    getNestedString(payloadData?.subscription, ["metadata", "userId"]) ||
-    getString(payloadData?.checkout?.externalId) ||
-    getString(payloadData?.subscription?.externalId)
-  );
+  return [
+    getNestedString(payloadData?.checkout, ["metadata", "userId"]),
+    getNestedString(payloadData?.subscription, ["metadata", "userId"]),
+    getString(payloadData?.checkout?.externalId),
+    getString(payloadData?.subscription?.externalId),
+    getString(payloadData?.payment?.externalId),
+  ]
+    .map(parseUserId)
+    .find(Boolean);
 }
 
-function getCustomerData(customerData: Record<string, unknown> | undefined): {
+function parseUserId(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  if (isUuid(value)) return value;
+
+  const [candidate] = value.split(":");
+  return candidate && isUuid(candidate) ? candidate : undefined;
+}
+
+type CustomerData = {
   email: string;
   name: string;
   externalCustomerId: string | null;
-} {
-  const email = getString(customerData?.email);
-  if (!email) throw new Error("Customer email missing from webhook payload");
+};
+
+async function getUserFallbackCustomer(
+  userId: string,
+): Promise<Pick<CustomerData, "email" | "name">> {
+  const fallbackEmail = `abacatepay-${userId}@precifika.local`;
+
+  if (!supabase) {
+    return { email: fallbackEmail, name: "Cliente Abacate Pay" };
+  }
+
+  const { data, error } = await supabase.auth.admin.getUserById(userId);
+
+  if (error) {
+    console.warn("Could not load user for webhook customer fallback:", {
+      userId,
+      code: error.code,
+      status: error.status,
+      name: error.name,
+    });
+  }
+
+  const user = data?.user;
+  const metadata = user?.user_metadata as Record<string, unknown> | undefined;
+  const name =
+    getString(metadata?.display_name) ||
+    getString(metadata?.name) ||
+    getString(metadata?.full_name) ||
+    getString(user?.email) ||
+    "Cliente Abacate Pay";
 
   return {
-    email,
-    name: getString(customerData?.name) || email,
-    externalCustomerId: getString(customerData?.id) || null,
+    email: getString(user?.email) || fallbackEmail,
+    name,
+  };
+}
+
+async function getCustomerData(
+  payloadData: WebhookPayload["data"],
+  userId: string,
+): Promise<CustomerData> {
+  const customerData = payloadData?.customer ?? undefined;
+  const email = getString(customerData?.email);
+  const fallback = email ? null : await getUserFallbackCustomer(userId);
+  const payerName =
+    getNestedString(payloadData?.payerInformation, ["PIX", "name"]) ||
+    getNestedString(payloadData?.payerInformation, ["BOLETO", "name"]);
+
+  return {
+    email: email || fallback?.email || `abacatepay-${userId}@precifika.local`,
+    name:
+      getString(customerData?.name) ||
+      payerName ||
+      fallback?.name ||
+      email ||
+      "Cliente Abacate Pay",
+    externalCustomerId:
+      getString(customerData?.id) ||
+      getString(payloadData?.checkout?.customerId) ||
+      getString(payloadData?.subscription?.customerId) ||
+      null,
   };
 }
 
@@ -213,19 +285,39 @@ serve(async (req) => {
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
 
-  if (!WEBHOOK_HMAC_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !supabase) {
-    return jsonResponse({ error: "Webhook is not securely configured" }, 500);
-  }
-
   const rawBody = await req.text();
   const signature = getSignature(req);
 
   if (!signature) {
+    logWebhookAuthContext(req, "missing_signature");
     return jsonResponse({ error: "Missing webhook signature" }, 401);
   }
 
-  const isValidSignature = await verifySignature(rawBody, signature, WEBHOOK_HMAC_SECRET);
+  if (
+    !WEBHOOK_QUERY_SECRET ||
+    !ABACATEPAY_PUBLIC_KEY ||
+    !SUPABASE_URL ||
+    !SUPABASE_SERVICE_ROLE_KEY ||
+    !supabase
+  ) {
+    console.error("Abacate Pay webhook is not securely configured:", {
+      hasWebhookQuerySecret: Boolean(WEBHOOK_QUERY_SECRET),
+      hasAbacatePayPublicKey: Boolean(ABACATEPAY_PUBLIC_KEY),
+      hasSupabaseUrl: Boolean(SUPABASE_URL),
+      hasServiceRoleKey: Boolean(SUPABASE_SERVICE_ROLE_KEY),
+      hasSupabaseClient: Boolean(supabase),
+    });
+    return jsonResponse({ error: "Webhook is not securely configured" }, 500);
+  }
+
+  if (!verifyWebhookSecret(req)) {
+    logWebhookAuthContext(req, "invalid_webhook_secret");
+    return jsonResponse({ error: "Invalid webhook secret" }, 401);
+  }
+
+  const isValidSignature = await verifySignature(rawBody, signature, ABACATEPAY_PUBLIC_KEY);
   if (!isValidSignature) {
+    logWebhookAuthContext(req, "invalid_signature");
     return jsonResponse({ error: "Invalid webhook signature" }, 401);
   }
 
@@ -260,7 +352,7 @@ serve(async (req) => {
 
     if (event === "checkout.completed") {
       const checkout = data.checkout;
-      const customer = getCustomerData(data.customer);
+      const customer = await getCustomerData(data, userId);
       const checkoutId = getString(checkout?.id);
       const planId = getNestedString(checkout, ["metadata", "planId"]);
 
@@ -318,24 +410,30 @@ serve(async (req) => {
 
     if (event.startsWith("subscription.")) {
       const subscription = data.subscription;
-      const customer = getCustomerData(data.customer);
+      const customer = await getCustomerData(data, userId);
       const subscriptionId = getString(subscription?.id);
       const planId = getNestedString(subscription, ["metadata", "planId"]);
 
       if (!subscriptionId) throw new Error("Subscription id missing from webhook payload");
 
-      const subscriptionStatus = getString(subscription?.status);
+      const subscriptionStatus = getString(subscription?.status)?.toUpperCase();
       const normalizedStatus =
-        subscriptionStatus === "ACTIVE"
-          ? "active"
-          : subscriptionStatus === "CANCELED"
-            ? "canceled"
-            : subscriptionStatus === "OVERDUE"
-              ? "pending"
-              : "inactive";
+        event === "subscription.trial_started"
+          ? "trial"
+          : subscriptionStatus === "ACTIVE"
+            ? "active"
+            : subscriptionStatus === "CANCELED" || subscriptionStatus === "CANCELLED"
+              ? "canceled"
+              : subscriptionStatus === "OVERDUE"
+                ? "pending"
+                : "inactive";
       const periodEnd =
+        (event === "subscription.trial_started"
+          ? getString(subscription?.trialEndsAt)
+          : undefined) ||
         getString(subscription?.nextBillingAt) ||
         getString(subscription?.expiresAt) ||
+        getString(subscription?.trialEndsAt) ||
         oneMonthFromNow();
 
       if (planId) {
@@ -383,6 +481,7 @@ serve(async (req) => {
           current_period_start:
             getString(subscription?.currentPeriodStart) ||
             getString(subscription?.startedAt) ||
+            getString(subscription?.createdAt) ||
             new Date().toISOString(),
           current_period_end: periodEnd,
           cancel_at_period_end: normalizedStatus === "canceled",
