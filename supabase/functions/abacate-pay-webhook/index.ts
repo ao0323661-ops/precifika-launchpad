@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const GATEWAY_PROVIDER = "abacatepay";
 const SIGNATURE_HEADER = "X-Webhook-Signature";
+const WEBHOOK_SECRET_HEADER = "X-Webhook-Secret";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const WEBHOOK_QUERY_SECRET = Deno.env.get("ABACATEPAY_WEBHOOK_SECRET");
@@ -80,6 +81,10 @@ function getWebhookSecret(req: Request): string | undefined {
   return getString(new URL(req.url).searchParams.get("webhookSecret"));
 }
 
+function getXWebhookSecret(req: Request): string | undefined {
+  return getString(req.headers.get(WEBHOOK_SECRET_HEADER));
+}
+
 type WebhookRequestLogContext = {
   detectedEvent: string | null;
   hasSignatureHeader: boolean;
@@ -87,6 +92,9 @@ type WebhookRequestLogContext = {
   headerNames: string[];
   method: string;
   rawBodyByteLength: number | null;
+  queryWebhookSecretMatchesEnv: boolean;
+  xWebhookSecretMatchesEnv: boolean;
+  xWebhookSecretPresent: boolean;
 };
 
 function buildWebhookLogContext(
@@ -95,6 +103,8 @@ function buildWebhookLogContext(
   detectedEvent: string | null,
 ): WebhookRequestLogContext {
   const url = new URL(req.url);
+  const queryWebhookSecret = getWebhookSecret(req);
+  const xWebhookSecret = getXWebhookSecret(req);
 
   return {
     detectedEvent,
@@ -103,6 +113,17 @@ function buildWebhookLogContext(
     headerNames: getHeaderNames(req),
     method: req.method,
     rawBodyByteLength: rawBody === null ? null : new TextEncoder().encode(rawBody).length,
+    queryWebhookSecretMatchesEnv: Boolean(
+      WEBHOOK_QUERY_SECRET &&
+      queryWebhookSecret &&
+      timingSafeEqual(queryWebhookSecret, WEBHOOK_QUERY_SECRET),
+    ),
+    xWebhookSecretMatchesEnv: Boolean(
+      WEBHOOK_QUERY_SECRET &&
+      xWebhookSecret &&
+      timingSafeEqual(xWebhookSecret, WEBHOOK_QUERY_SECRET),
+    ),
+    xWebhookSecretPresent: Boolean(xWebhookSecret),
   };
 }
 
@@ -198,15 +219,28 @@ async function verifySignature(
   rawBody: string,
   signature: string,
   publicKey: string,
+  xWebhookSecret: string | undefined,
 ): Promise<boolean> {
-  const signatureBuffer = await signWebhookBody(rawBody, publicKey);
   const received = normalizeSignature(signature);
-  const expectedBase64 = encodeBase64(signatureBuffer);
+  const publicKeySignature = await signWebhookBody(rawBody, publicKey);
+  const publicKeyBase64 = encodeBase64(publicKeySignature);
 
-  return timingSafeEqual(received, expectedBase64);
+  if (timingSafeEqual(received, publicKeyBase64)) return true;
+
+  if (xWebhookSecret) {
+    const xWebhookSecretSignature = await signWebhookBody(rawBody, xWebhookSecret);
+    const xWebhookSecretBase64 = encodeBase64(xWebhookSecretSignature);
+    return timingSafeEqual(received, xWebhookSecretBase64);
+  }
+
+  return false;
 }
 
-async function getHmacDiagnostics(rawBody: string, signature: string) {
+async function getHmacDiagnostics(
+  rawBody: string,
+  signature: string,
+  xWebhookSecret: string | undefined,
+) {
   const received = normalizeSignature(signature);
   const receivedWithoutPrefix = stripSha256Prefix(signature);
   const hasSha256Prefix = received !== receivedWithoutPrefix;
@@ -251,14 +285,39 @@ async function getHmacDiagnostics(rawBody: string, signature: string) {
     );
   }
 
+  if (xWebhookSecret) {
+    const xWebhookSecretSignature = await signWebhookBody(rawBody, xWebhookSecret);
+    const xWebhookSecretBase64 = encodeBase64(xWebhookSecretSignature);
+    const xWebhookSecretHex = bufferToHex(xWebhookSecretSignature);
+
+    diagnostics.hmacWithXWebhookSecretBase64Match = timingSafeEqual(received, xWebhookSecretBase64);
+    diagnostics.hmacWithXWebhookSecretHexMatch = timingSafeEqual(received, xWebhookSecretHex);
+    diagnostics.hmacWithXWebhookSecretBase64MatchWithoutPrefix = timingSafeEqual(
+      receivedWithoutPrefix,
+      xWebhookSecretBase64,
+    );
+    diagnostics.hmacWithXWebhookSecretHexMatchWithoutPrefix = timingSafeEqual(
+      receivedWithoutPrefix,
+      xWebhookSecretHex,
+    );
+  } else {
+    diagnostics.hmacWithXWebhookSecretBase64Match = false;
+    diagnostics.hmacWithXWebhookSecretHexMatch = false;
+  }
+
   return diagnostics;
 }
 
 function verifyWebhookSecret(req: Request): boolean {
   if (!WEBHOOK_QUERY_SECRET) return false;
 
-  const received = getWebhookSecret(req);
-  return Boolean(received && timingSafeEqual(received, WEBHOOK_QUERY_SECRET));
+  const querySecret = getWebhookSecret(req);
+  const xWebhookSecret = getXWebhookSecret(req);
+
+  return Boolean(
+    (querySecret && timingSafeEqual(querySecret, WEBHOOK_QUERY_SECRET)) ||
+    (xWebhookSecret && timingSafeEqual(xWebhookSecret, WEBHOOK_QUERY_SECRET)),
+  );
 }
 
 function getUserId(payloadData: WebhookPayload["data"]): string | undefined {
@@ -467,6 +526,7 @@ serve(async (req) => {
   const signatureHeaderPresence = getSignatureHeaderPresence(req);
 
   const signature = getSignature(req);
+  const xWebhookSecret = getXWebhookSecret(req);
 
   if (!signature) {
     logWebhookFailure("missing_signature", context, { signatureHeaderPresence });
@@ -497,10 +557,15 @@ serve(async (req) => {
     return jsonResponse({ error: "Invalid webhook secret" }, 401);
   }
 
-  const isValidSignature = await verifySignature(rawBody, signature, ABACATEPAY_PUBLIC_KEY);
+  const isValidSignature = await verifySignature(
+    rawBody,
+    signature,
+    ABACATEPAY_PUBLIC_KEY,
+    xWebhookSecret,
+  );
   if (!isValidSignature) {
     logWebhookFailure("invalid_signature", context, {
-      hmacDiagnostics: await getHmacDiagnostics(rawBody, signature),
+      hmacDiagnostics: await getHmacDiagnostics(rawBody, signature, xWebhookSecret),
       signatureHeaderPresence,
     });
     return jsonResponse({ error: "Invalid webhook signature" }, 401);
