@@ -8,6 +8,12 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const WEBHOOK_QUERY_SECRET = Deno.env.get("ABACATEPAY_WEBHOOK_SECRET");
 const ABACATEPAY_PUBLIC_KEY = Deno.env.get("ABACATEPAY_PUBLIC_KEY");
+const SIGNATURE_DIAGNOSTIC_HEADERS = [
+  "X-Webhook-Signature",
+  "X-Abacate-Signature",
+  "X-AbacatePay-Signature",
+  "X-Abacatepay-Signature",
+];
 
 const supabase =
   SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
@@ -66,16 +72,70 @@ function getSignature(req: Request): string | undefined {
   return getString(req.headers.get(SIGNATURE_HEADER));
 }
 
+function getHeaderNames(req: Request): string[] {
+  return Array.from(req.headers.keys()).sort();
+}
+
 function getWebhookSecret(req: Request): string | undefined {
   return getString(new URL(req.url).searchParams.get("webhookSecret"));
 }
 
-function logWebhookAuthContext(req: Request, reason: string) {
-  console.warn("Abacate Pay webhook auth check failed:", {
-    reason,
-    headerNames: Array.from(req.headers.keys()).sort(),
+type WebhookRequestLogContext = {
+  detectedEvent: string | null;
+  hasSignatureHeader: boolean;
+  hasWebhookSecretParam: boolean;
+  headerNames: string[];
+  method: string;
+  rawBodyByteLength: number | null;
+};
+
+function buildWebhookLogContext(
+  req: Request,
+  rawBody: string | null,
+  detectedEvent: string | null,
+): WebhookRequestLogContext {
+  const url = new URL(req.url);
+
+  return {
+    detectedEvent,
     hasSignatureHeader: req.headers.has(SIGNATURE_HEADER),
-    hasWebhookSecretParam: new URL(req.url).searchParams.has("webhookSecret"),
+    hasWebhookSecretParam: url.searchParams.has("webhookSecret"),
+    headerNames: getHeaderNames(req),
+    method: req.method,
+    rawBodyByteLength: rawBody === null ? null : new TextEncoder().encode(rawBody).length,
+  };
+}
+
+function getSignatureHeaderPresence(req: Request): Record<string, boolean> {
+  return Object.fromEntries(
+    SIGNATURE_DIAGNOSTIC_HEADERS.map((header) => [header, req.headers.has(header)]),
+  );
+}
+
+function logWebhookRequest(context: WebhookRequestLogContext) {
+  console.info("Abacate Pay webhook request received:", context);
+}
+
+function logWebhookFailure(
+  reason: string,
+  context: WebhookRequestLogContext,
+  extra: Record<string, unknown> = {},
+) {
+  console.warn("Abacate Pay webhook rejected:", {
+    ...context,
+    reason,
+    ...extra,
+  });
+}
+
+function logWebhookInfo(
+  message: string,
+  context: WebhookRequestLogContext,
+  extra: Record<string, unknown> = {},
+) {
+  console.info(message, {
+    ...context,
+    ...extra,
   });
 }
 
@@ -87,6 +147,19 @@ function oneMonthFromNow(): string {
 
 function normalizeSignature(signature: string): string {
   return signature.trim();
+}
+
+function stripSha256Prefix(signature: string): string {
+  const trimmed = normalizeSignature(signature);
+  return trimmed.toLowerCase().startsWith("sha256=") ? trimmed.slice(7) : trimmed;
+}
+
+function looksLikeBase64(value: string): boolean {
+  return /^[A-Za-z0-9+/]+={0,2}$/.test(value) && value.length % 4 === 0;
+}
+
+function looksLikeHex(value: string): boolean {
+  return /^[0-9a-f]+$/i.test(value) && value.length % 2 === 0;
 }
 
 function timingSafeEqual(a: string, b: string): boolean {
@@ -103,24 +176,82 @@ function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-async function verifySignature(
-  rawBody: string,
-  signature: string,
-  publicKey: string,
-): Promise<boolean> {
+function bufferToHex(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function signWebhookBody(rawBody: string, keyMaterial: string): Promise<ArrayBuffer> {
   const key = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(publicKey),
+    new TextEncoder().encode(keyMaterial),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
   );
 
-  const signatureBuffer = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody));
+  return crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody));
+}
+
+async function verifySignature(
+  rawBody: string,
+  signature: string,
+  publicKey: string,
+): Promise<boolean> {
+  const signatureBuffer = await signWebhookBody(rawBody, publicKey);
   const received = normalizeSignature(signature);
   const expectedBase64 = encodeBase64(signatureBuffer);
 
   return timingSafeEqual(received, expectedBase64);
+}
+
+async function getHmacDiagnostics(rawBody: string, signature: string) {
+  const received = normalizeSignature(signature);
+  const receivedWithoutPrefix = stripSha256Prefix(signature);
+  const hasSha256Prefix = received !== receivedWithoutPrefix;
+  const diagnostics: Record<string, unknown> = {
+    signatureLength: received.length,
+    signatureStartsWithSha256Prefix: hasSha256Prefix,
+    signatureLooksBase64: looksLikeBase64(receivedWithoutPrefix),
+    signatureLooksHex: looksLikeHex(receivedWithoutPrefix),
+  };
+
+  if (ABACATEPAY_PUBLIC_KEY) {
+    const publicKeySignature = await signWebhookBody(rawBody, ABACATEPAY_PUBLIC_KEY);
+    const publicKeyBase64 = encodeBase64(publicKeySignature);
+    const publicKeyHex = bufferToHex(publicKeySignature);
+
+    diagnostics.publicKeyRawBodyBase64Match = timingSafeEqual(received, publicKeyBase64);
+    diagnostics.publicKeyRawBodyHexMatch = timingSafeEqual(received, publicKeyHex);
+    diagnostics.publicKeyRawBodyBase64MatchWithoutPrefix = timingSafeEqual(
+      receivedWithoutPrefix,
+      publicKeyBase64,
+    );
+    diagnostics.publicKeyRawBodyHexMatchWithoutPrefix = timingSafeEqual(
+      receivedWithoutPrefix,
+      publicKeyHex,
+    );
+  }
+
+  if (WEBHOOK_QUERY_SECRET) {
+    const secretSignature = await signWebhookBody(rawBody, WEBHOOK_QUERY_SECRET);
+    const secretBase64 = encodeBase64(secretSignature);
+    const secretHex = bufferToHex(secretSignature);
+
+    diagnostics.webhookSecretRawBodyBase64Match = timingSafeEqual(received, secretBase64);
+    diagnostics.webhookSecretRawBodyHexMatch = timingSafeEqual(received, secretHex);
+    diagnostics.webhookSecretRawBodyBase64MatchWithoutPrefix = timingSafeEqual(
+      receivedWithoutPrefix,
+      secretBase64,
+    );
+    diagnostics.webhookSecretRawBodyHexMatchWithoutPrefix = timingSafeEqual(
+      receivedWithoutPrefix,
+      secretHex,
+    );
+  }
+
+  return diagnostics;
 }
 
 function verifyWebhookSecret(req: Request): boolean {
@@ -148,6 +279,26 @@ function parseUserId(value: string | undefined): string | undefined {
 
   const [candidate] = value.split(":");
   return candidate && isUuid(candidate) ? candidate : undefined;
+}
+
+function parseWebhookPayload(rawBody: string): {
+  error?: Error;
+  event: string | null;
+  payload?: WebhookPayload;
+} {
+  try {
+    const payload = JSON.parse(rawBody) as WebhookPayload;
+
+    return {
+      event: getString(payload.event) ?? null,
+      payload,
+    };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error : new Error("Invalid JSON"),
+      event: null,
+    };
+  }
 }
 
 type CustomerData = {
@@ -280,16 +431,45 @@ async function registerWebhookAttempt(payload: WebhookPayload) {
   return { duplicate: true, logEntry: existingLog, eventId, eventType };
 }
 
+function getSafeErrorInfo(error: unknown): Record<string, unknown> {
+  if (!error || typeof error !== "object") {
+    return { message: String(error) };
+  }
+
+  const record = error as Record<string, unknown>;
+
+  return {
+    code: typeof record.code === "string" ? record.code : undefined,
+    details: typeof record.details === "string" ? record.details : undefined,
+    hint: typeof record.hint === "string" ? record.hint : undefined,
+    message: error instanceof Error ? error.message : getString(record.message),
+    name: error instanceof Error ? error.name : getString(record.name),
+    status:
+      typeof record.status === "number" || typeof record.status === "string"
+        ? record.status
+        : undefined,
+  };
+}
+
 serve(async (req) => {
   if (req.method !== "POST") {
+    const context = buildWebhookLogContext(req, null, null);
+    logWebhookRequest(context);
+    logWebhookFailure("method_not_allowed", context);
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
 
   const rawBody = await req.text();
+  const parsedPayload = parseWebhookPayload(rawBody);
+  const context = buildWebhookLogContext(req, rawBody, parsedPayload.event);
+  logWebhookRequest(context);
+
+  const signatureHeaderPresence = getSignatureHeaderPresence(req);
+
   const signature = getSignature(req);
 
   if (!signature) {
-    logWebhookAuthContext(req, "missing_signature");
+    logWebhookFailure("missing_signature", context, { signatureHeaderPresence });
     return jsonResponse({ error: "Missing webhook signature" }, 401);
   }
 
@@ -300,38 +480,52 @@ serve(async (req) => {
     !SUPABASE_SERVICE_ROLE_KEY ||
     !supabase
   ) {
-    console.error("Abacate Pay webhook is not securely configured:", {
+    const configState = {
       hasWebhookQuerySecret: Boolean(WEBHOOK_QUERY_SECRET),
       hasAbacatePayPublicKey: Boolean(ABACATEPAY_PUBLIC_KEY),
       hasSupabaseUrl: Boolean(SUPABASE_URL),
       hasServiceRoleKey: Boolean(SUPABASE_SERVICE_ROLE_KEY),
       hasSupabaseClient: Boolean(supabase),
-    });
+    };
+    console.error("Abacate Pay webhook is not securely configured:", configState);
+    logWebhookFailure("insecure_configuration", context, configState);
     return jsonResponse({ error: "Webhook is not securely configured" }, 500);
   }
 
   if (!verifyWebhookSecret(req)) {
-    logWebhookAuthContext(req, "invalid_webhook_secret");
+    logWebhookFailure("invalid_webhook_secret", context, { signatureHeaderPresence });
     return jsonResponse({ error: "Invalid webhook secret" }, 401);
   }
 
   const isValidSignature = await verifySignature(rawBody, signature, ABACATEPAY_PUBLIC_KEY);
   if (!isValidSignature) {
-    logWebhookAuthContext(req, "invalid_signature");
+    logWebhookFailure("invalid_signature", context, {
+      hmacDiagnostics: await getHmacDiagnostics(rawBody, signature),
+      signatureHeaderPresence,
+    });
     return jsonResponse({ error: "Invalid webhook signature" }, 401);
   }
 
-  let payload: WebhookPayload;
-  try {
-    payload = JSON.parse(rawBody) as WebhookPayload;
-  } catch {
+  logWebhookInfo("Abacate Pay webhook signature verified:", context);
+
+  if (!parsedPayload.payload) {
+    logWebhookFailure("invalid_json", context, {
+      parseError: getSafeErrorInfo(parsedPayload.error),
+    });
     return jsonResponse({ error: "Invalid JSON" }, 400);
   }
 
+  const payload = parsedPayload.payload;
   let logId: string | undefined;
 
   try {
     const attempt = await registerWebhookAttempt(payload);
+    logWebhookInfo("Abacate Pay webhook log attempt registered:", context, {
+      duplicate: attempt.duplicate,
+      eventIdPresent: Boolean(attempt.eventId),
+      eventType: attempt.eventType,
+      logEntryPresent: Boolean(attempt.logEntry),
+    });
 
     if (attempt.duplicate) {
       return jsonResponse({ message: "Duplicate event ignored" }, 200);
@@ -345,6 +539,9 @@ serve(async (req) => {
 
     if (!userId || !isUuid(userId)) {
       await markLogError(logId, "Valid user context not found");
+      logWebhookFailure("valid_user_context_not_found", context, {
+        logIdPresent: Boolean(logId),
+      });
       return jsonResponse({ error: "Valid user context not found" }, 422);
     }
 
@@ -501,10 +698,17 @@ serve(async (req) => {
       })
       .eq("id", logId);
 
+    logWebhookInfo("Abacate Pay webhook processed successfully:", context, {
+      event,
+      logIdPresent: Boolean(logId),
+    });
     return jsonResponse({ success: true }, 200);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Webhook processing error";
-    console.error("Webhook processing error:", error);
+    logWebhookFailure("processing_error", context, {
+      error: getSafeErrorInfo(error),
+      logIdPresent: Boolean(logId),
+    });
     await markLogError(logId, errorMessage);
     return jsonResponse({ error: errorMessage }, 500);
   }
