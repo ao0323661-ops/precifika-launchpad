@@ -9,6 +9,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const WEBHOOK_QUERY_SECRET = Deno.env.get("ABACATEPAY_WEBHOOK_SECRET");
 const ABACATEPAY_PUBLIC_KEY = Deno.env.get("ABACATEPAY_PUBLIC_KEY");
+const ABACATEPAY_API_KEY = Deno.env.get("ABACATEPAY_API_KEY");
 const SIGNATURE_DIAGNOSTIC_HEADERS = [
   "X-Webhook-Signature",
   "X-Abacate-Signature",
@@ -101,6 +102,7 @@ function buildWebhookLogContext(
   req: Request,
   rawBody: string | null,
   detectedEvent: string | null,
+  rawBodyByteLength?: number | null,
 ): WebhookRequestLogContext {
   const url = new URL(req.url);
   const queryWebhookSecret = getWebhookSecret(req);
@@ -112,7 +114,8 @@ function buildWebhookLogContext(
     hasWebhookSecretParam: url.searchParams.has("webhookSecret"),
     headerNames: getHeaderNames(req),
     method: req.method,
-    rawBodyByteLength: rawBody === null ? null : new TextEncoder().encode(rawBody).length,
+    rawBodyByteLength:
+      rawBodyByteLength ?? (rawBody === null ? null : new TextEncoder().encode(rawBody).length),
     queryWebhookSecretMatchesEnv: Boolean(
       WEBHOOK_QUERY_SECRET &&
       queryWebhookSecret &&
@@ -175,6 +178,16 @@ function stripSha256Prefix(signature: string): string {
   return trimmed.toLowerCase().startsWith("sha256=") ? trimmed.slice(7) : trimmed;
 }
 
+function getSignatureComparisonValues(signature: string) {
+  const received = normalizeSignature(signature);
+  const withoutPrefix = stripSha256Prefix(signature);
+
+  return {
+    received,
+    withoutPrefix,
+  };
+}
+
 function looksLikeBase64(value: string): boolean {
   return /^[A-Za-z0-9+/]+={0,2}$/.test(value) && value.length % 4 === 0;
 }
@@ -203,16 +216,68 @@ function bufferToHex(buffer: ArrayBuffer): string {
     .join("");
 }
 
-async function signWebhookBody(rawBody: string, keyMaterial: string): Promise<ArrayBuffer> {
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function encodeUtf8(value: string): Uint8Array {
+  return new TextEncoder().encode(value);
+}
+
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
+function bytesEqual(left: Uint8Array, right: Uint8Array): boolean {
+  if (left.length !== right.length) return false;
+
+  let diff = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    diff |= left[index] ^ right[index];
+  }
+
+  return diff === 0;
+}
+
+function toBase64Url(base64: string): string {
+  return base64.replaceAll("+", "-").replaceAll("/", "_");
+}
+
+function withoutBase64Padding(value: string): string {
+  return value.replace(/=+$/, "");
+}
+
+function normalizeDiagnosticName(value: string): string {
+  return value.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+async function signWebhookBody(
+  body: string | Uint8Array,
+  keyMaterial: string,
+  hash = "SHA-256",
+): Promise<ArrayBuffer> {
   const key = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(keyMaterial),
-    { name: "HMAC", hash: "SHA-256" },
+    toArrayBuffer(encodeUtf8(keyMaterial)),
+    { name: "HMAC", hash },
     false,
     ["sign"],
   );
 
-  return crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody));
+  const bodyBytes = typeof body === "string" ? encodeUtf8(body) : body;
+  return crypto.subtle.sign("HMAC", key, toArrayBuffer(bodyBytes));
+}
+
+async function digestWebhookBody(
+  body: string | Uint8Array,
+  hash = "SHA-256",
+): Promise<ArrayBuffer> {
+  const bodyBytes = typeof body === "string" ? encodeUtf8(body) : body;
+  return crypto.subtle.digest(hash, toArrayBuffer(bodyBytes));
 }
 
 async function verifySignature(
@@ -238,17 +303,28 @@ async function verifySignature(
 
 async function getHmacDiagnostics(
   rawBody: string,
+  rawBodyBytes: Uint8Array,
   signature: string,
   xWebhookSecret: string | undefined,
+  payload: WebhookPayload | undefined,
 ) {
   const received = normalizeSignature(signature);
   const receivedWithoutPrefix = stripSha256Prefix(signature);
   const hasSha256Prefix = received !== receivedWithoutPrefix;
+  const bodyVariants = buildBodyVariants(rawBody, rawBodyBytes, payload);
+  const keyMaterials = buildKeyMaterials(xWebhookSecret);
+  const hmacSha256: Record<string, boolean> = {};
+  const hmacOtherAlgorithms: Record<string, boolean> = {};
+  const simpleDigests: Record<string, boolean> = {};
   const diagnostics: Record<string, unknown> = {
+    bodyVariantInfo: getBodyVariantInfo(bodyVariants, rawBodyBytes, rawBody),
+    rawBytesEqualTextEncoderBytes: bytesEqual(rawBodyBytes, encodeUtf8(rawBody)),
     signatureLength: received.length,
     signatureStartsWithSha256Prefix: hasSha256Prefix,
     signatureLooksBase64: looksLikeBase64(receivedWithoutPrefix),
     signatureLooksHex: looksLikeHex(receivedWithoutPrefix),
+    signatureLooksBase64NoPadding: looksLikeBase64(`${receivedWithoutPrefix}=`),
+    signatureLooksBase64Url: /^[A-Za-z0-9_-]+={0,2}$/.test(receivedWithoutPrefix),
   };
 
   if (ABACATEPAY_PUBLIC_KEY) {
@@ -305,6 +381,46 @@ async function getHmacDiagnostics(
     diagnostics.hmacWithXWebhookSecretHexMatch = false;
   }
 
+  for (const keyMaterial of keyMaterials) {
+    for (const variant of bodyVariants) {
+      const prefix = `${keyMaterial.name}_${variant.name}_hmacSha256`;
+      addEncodedMatches(
+        hmacSha256,
+        prefix,
+        await signWebhookBody(variant.bytes, keyMaterial.value, "SHA-256"),
+        signature,
+      );
+    }
+
+    for (const hash of ["SHA-1", "SHA-512"]) {
+      for (const variant of bodyVariants.slice(0, 4)) {
+        const prefix = `${keyMaterial.name}_${variant.name}_hmac${hash.replace("-", "")}`;
+        addEncodedMatches(
+          hmacOtherAlgorithms,
+          prefix,
+          await signWebhookBody(variant.bytes, keyMaterial.value, hash),
+          signature,
+        );
+      }
+    }
+  }
+
+  for (const hash of ["SHA-1", "SHA-256", "SHA-512"]) {
+    for (const variant of bodyVariants) {
+      const prefix = `${variant.name}_simpleDigest${hash.replace("-", "")}`;
+      addEncodedMatches(
+        simpleDigests,
+        prefix,
+        await digestWebhookBody(variant.bytes, hash),
+        signature,
+      );
+    }
+  }
+
+  diagnostics.extremeHmacSha256 = hmacSha256;
+  diagnostics.extremeHmacSha1Sha512 = hmacOtherAlgorithms;
+  diagnostics.extremeSimpleDigests = simpleDigests;
+
   return diagnostics;
 }
 
@@ -358,6 +474,145 @@ function parseWebhookPayload(rawBody: string): {
       event: null,
     };
   }
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+
+  const record = value as Record<string, unknown>;
+  const entries = Object.keys(record)
+    .sort()
+    .filter((key) => record[key] !== undefined)
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`);
+
+  return `{${entries.join(",")}}`;
+}
+
+type BodyVariant = {
+  bytes: Uint8Array;
+  name: string;
+};
+
+function buildBodyVariants(
+  rawBody: string,
+  rawBodyBytes: Uint8Array,
+  payload: WebhookPayload | undefined,
+): BodyVariant[] {
+  const variants: BodyVariant[] = [
+    { name: "rawBytes", bytes: rawBodyBytes },
+    { name: "utf8String", bytes: encodeUtf8(rawBody) },
+    { name: "textEncoderBytes", bytes: encodeUtf8(rawBody) },
+    { name: "noWhitespace", bytes: encodeUtf8(rawBody.replace(/\s+/g, "")) },
+  ];
+
+  const addJsonVariant = (name: string, value: unknown) => {
+    if (value === undefined) return;
+    variants.push({ name, bytes: encodeUtf8(JSON.stringify(value)) });
+  };
+
+  const addStableJsonVariant = (name: string, value: unknown) => {
+    if (value === undefined) return;
+    variants.push({ name, bytes: encodeUtf8(stableStringify(value)) });
+  };
+
+  if (payload) {
+    addJsonVariant("jsonStringifyParsedPayload", payload);
+    addStableJsonVariant("stableStringifyParsedPayload", payload);
+    addJsonVariant("payloadData", payload.data);
+    addStableJsonVariant("stablePayloadData", payload.data);
+    addJsonVariant("payloadCheckout", (payload as Record<string, unknown>).checkout);
+    addJsonVariant("payloadDataCheckout", payload.data?.checkout);
+    addJsonVariant("payloadDataSubscription", payload.data?.subscription);
+  }
+
+  return variants;
+}
+
+function getBodyVariantInfo(variants: BodyVariant[], rawBodyBytes: Uint8Array, rawBody: string) {
+  return Object.fromEntries(
+    variants.map((variant) => [
+      variant.name,
+      {
+        byteLength: variant.bytes.length,
+        equalsRawBytes: bytesEqual(variant.bytes, rawBodyBytes),
+        equalsTextEncoderBytes: bytesEqual(variant.bytes, encodeUtf8(rawBody)),
+      },
+    ]),
+  );
+}
+
+function addEncodedMatches(
+  target: Record<string, boolean>,
+  prefix: string,
+  digest: ArrayBuffer,
+  signature: string,
+) {
+  const { received, withoutPrefix } = getSignatureComparisonValues(signature);
+  const base64 = encodeBase64(digest);
+  const base64NoPadding = withoutBase64Padding(base64);
+  const base64Url = toBase64Url(base64);
+  const base64UrlNoPadding = withoutBase64Padding(base64Url);
+  const hex = bufferToHex(digest);
+  const normalizedPrefix = normalizeDiagnosticName(prefix);
+
+  target[`${normalizedPrefix}_base64Match`] = timingSafeEqual(received, base64);
+  target[`${normalizedPrefix}_base64NoPaddingMatch`] = timingSafeEqual(received, base64NoPadding);
+  target[`${normalizedPrefix}_base64UrlMatch`] = timingSafeEqual(received, base64Url);
+  target[`${normalizedPrefix}_base64UrlNoPaddingMatch`] = timingSafeEqual(
+    received,
+    base64UrlNoPadding,
+  );
+  target[`${normalizedPrefix}_hexMatch`] = timingSafeEqual(received, hex);
+  target[`${normalizedPrefix}_base64WithoutPrefixMatch`] = timingSafeEqual(withoutPrefix, base64);
+  target[`${normalizedPrefix}_base64NoPaddingWithoutPrefixMatch`] = timingSafeEqual(
+    withoutPrefix,
+    base64NoPadding,
+  );
+  target[`${normalizedPrefix}_base64UrlWithoutPrefixMatch`] = timingSafeEqual(
+    withoutPrefix,
+    base64Url,
+  );
+  target[`${normalizedPrefix}_base64UrlNoPaddingWithoutPrefixMatch`] = timingSafeEqual(
+    withoutPrefix,
+    base64UrlNoPadding,
+  );
+  target[`${normalizedPrefix}_hexWithoutPrefixMatch`] = timingSafeEqual(withoutPrefix, hex);
+}
+
+function buildKeyMaterials(xWebhookSecret: string | undefined) {
+  return [
+    { name: "publicKey", value: ABACATEPAY_PUBLIC_KEY },
+    { name: "webhookSecretEnv", value: WEBHOOK_QUERY_SECRET },
+    { name: "xWebhookSecret", value: xWebhookSecret },
+    { name: "apiKey", value: ABACATEPAY_API_KEY },
+    {
+      name: "publicKeyPlusWebhookSecret",
+      value:
+        ABACATEPAY_PUBLIC_KEY && WEBHOOK_QUERY_SECRET
+          ? `${ABACATEPAY_PUBLIC_KEY}${WEBHOOK_QUERY_SECRET}`
+          : undefined,
+    },
+    {
+      name: "webhookSecretPlusPublicKey",
+      value:
+        WEBHOOK_QUERY_SECRET && ABACATEPAY_PUBLIC_KEY
+          ? `${WEBHOOK_QUERY_SECRET}${ABACATEPAY_PUBLIC_KEY}`
+          : undefined,
+    },
+    {
+      name: "apiKeyPlusWebhookSecret",
+      value:
+        ABACATEPAY_API_KEY && WEBHOOK_QUERY_SECRET
+          ? `${ABACATEPAY_API_KEY}${WEBHOOK_QUERY_SECRET}`
+          : undefined,
+    },
+  ].filter((key): key is { name: string; value: string } => Boolean(key.value));
 }
 
 type CustomerData = {
@@ -518,9 +773,10 @@ serve(async (req) => {
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
 
-  const rawBody = await req.text();
+  const rawBodyBytes = new Uint8Array(await req.arrayBuffer());
+  const rawBody = new TextDecoder().decode(rawBodyBytes);
   const parsedPayload = parseWebhookPayload(rawBody);
-  const context = buildWebhookLogContext(req, rawBody, parsedPayload.event);
+  const context = buildWebhookLogContext(req, rawBody, parsedPayload.event, rawBodyBytes.length);
   logWebhookRequest(context);
 
   const signatureHeaderPresence = getSignatureHeaderPresence(req);
@@ -565,7 +821,13 @@ serve(async (req) => {
   );
   if (!isValidSignature) {
     logWebhookFailure("invalid_signature", context, {
-      hmacDiagnostics: await getHmacDiagnostics(rawBody, signature, xWebhookSecret),
+      hmacDiagnostics: await getHmacDiagnostics(
+        rawBody,
+        rawBodyBytes,
+        signature,
+        xWebhookSecret,
+        parsedPayload.payload,
+      ),
       signatureHeaderPresence,
     });
     return jsonResponse({ error: "Invalid webhook signature" }, 401);
