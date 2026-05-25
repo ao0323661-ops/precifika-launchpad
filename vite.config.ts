@@ -86,6 +86,9 @@ export default defineConfig(({ mode }) => {
         "@": "/src",
       },
     },
+    ssr: {
+      noExternal: ["h3", "h3-v2", "rou3", "srvx"],
+    },
     server: {
       host: "::",
       port: 8080,
